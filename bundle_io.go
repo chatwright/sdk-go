@@ -64,7 +64,10 @@ func Write(w io.Writer, b Bundle) error {
 // ErrMissingAIGoalSection — over every Part of every Run. Unknown extra JSON
 // fields elsewhere in the document are ignored (encoding/json's default: no
 // DisallowUnknownFields), so a Bundle written by a future minor version that
-// only adds fields still reads cleanly here.
+// only adds fields still reads cleanly here. Read does not, and deliberately
+// never will, validate Bookmark/Annotation references (Annotation.ReplyTo,
+// Anchor) — see Annotation's own doc comment for why a dangling reference is
+// a consumer's concern, not a Read error.
 func Read(r io.Reader) (Bundle, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {

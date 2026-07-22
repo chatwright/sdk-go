@@ -1,7 +1,11 @@
 {
   "format": "https://chatwright.dev/formats/run-bundle/v1",
   "metadata": {
-    "createdAt": "2026-07-22T12:00:00Z"
+    "createdAt": "2026-07-22T12:00:00Z",
+    "author": {
+      "name": "Ada Reviewer",
+      "email": "ada@chatwright.dev"
+    }
   },
   "runs": [
     {
@@ -44,8 +48,8 @@
           "chatId": 42,
           "entries": [
             {
-              "Direction": 0,
-              "Kind": 0,
+              "Direction": "user",
+              "Kind": "message",
               "MessageID": 1,
               "RefMessageID": 0,
               "Version": 0,
@@ -56,8 +60,8 @@
               "FromID": 7
             },
             {
-              "Direction": 1,
-              "Kind": 0,
+              "Direction": "bot",
+              "Kind": "message",
               "MessageID": 2,
               "RefMessageID": 0,
               "Version": 0,
@@ -76,8 +80,8 @@
               "FromID": 1
             },
             {
-              "Direction": 0,
-              "Kind": 1,
+              "Direction": "user",
+              "Kind": "action",
               "MessageID": 0,
               "RefMessageID": 2,
               "Version": 0,
@@ -88,8 +92,8 @@
               "FromID": 7
             },
             {
-              "Direction": 1,
-              "Kind": 0,
+              "Direction": "bot",
+              "Kind": "message",
               "MessageID": 2,
               "RefMessageID": 0,
               "Version": 1,
@@ -161,11 +165,11 @@
                 },
                 "Validation": {
                   "Checked": false,
-                  "Verdict": 0,
+                  "Verdict": "",
                   "Reason": ""
                 },
                 "Action": {
-                  "Kind": 1,
+                  "Kind": "executed",
                   "Detail": ""
                 }
               },
@@ -189,11 +193,11 @@
                 },
                 "Validation": {
                   "Checked": false,
-                  "Verdict": 0,
+                  "Verdict": "",
                   "Reason": ""
                 },
                 "Action": {
-                  "Kind": 4,
+                  "Kind": "task-completed",
                   "Detail": ""
                 }
               }
@@ -212,7 +216,7 @@
                       "ID": "msg1",
                       "Version": 0,
                       "Edited": false,
-                      "Actor": 0,
+                      "Actor": "user",
                       "Text": "Hi",
                       "Actions": null
                     }
@@ -233,7 +237,7 @@
                       "ID": "msg1",
                       "Version": 0,
                       "Edited": false,
-                      "Actor": 0,
+                      "Actor": "user",
                       "Text": "Hi",
                       "Actions": null
                     },
@@ -241,7 +245,7 @@
                       "ID": "msg2",
                       "Version": 0,
                       "Edited": false,
-                      "Actor": 1,
+                      "Actor": "bot",
                       "Text": "Choose your language:",
                       "Actions": [
                         {
@@ -254,9 +258,9 @@
                   ],
                   "Changes": [
                     {
-                      "Kind": 0,
+                      "Kind": "new-message",
                       "MessageID": "msg2",
-                      "Actor": 1,
+                      "Actor": "bot",
                       "PreviousVersion": 0,
                       "Version": 0
                     }
@@ -314,6 +318,49 @@
               }
             ]
           }
+        }
+      ],
+      "bookmarks": [
+        {
+          "id": "language-picked",
+          "title": "Language picked",
+          "anchor": {
+            "chatId": 42,
+            "entryIndex": 2
+          }
+        }
+      ],
+      "annotations": [
+        {
+          "id": "note-1",
+          "anchor": {
+            "chatId": 42,
+            "entryIndex": 3,
+            "messageId": 2,
+            "version": 1
+          },
+          "author": {
+            "name": "Ada Reviewer",
+            "email": "ada@chatwright.dev"
+          },
+          "createdAt": "2026-07-22T12:00:10Z",
+          "text": "See how instead of $4 bot returned 4$"
+        },
+        {
+          "id": "note-2",
+          "anchor": {
+            "chatId": 42,
+            "entryIndex": 3,
+            "messageId": 2,
+            "version": 1
+          },
+          "author": {
+            "name": "Sam Maintainer",
+            "email": "sam@chatwright.dev"
+          },
+          "createdAt": "2026-07-22T12:00:20Z",
+          "text": "Good catch — filed as a display bug.",
+          "replyTo": "note-1"
         }
       ]
     }

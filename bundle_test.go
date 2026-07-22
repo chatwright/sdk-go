@@ -119,6 +119,27 @@ func goldenBundle() bundle.Bundle {
 		},
 	}
 
+	bookmarks := []bundle.Bookmark{
+		{ID: "language-picked", Title: "Language picked", Anchor: bundle.Anchor{ChatID: 42, EntryIndex: 2}},
+	}
+	annotations := []bundle.Annotation{
+		{
+			ID:        "note-1",
+			Anchor:    bundle.Anchor{ChatID: 42, EntryIndex: 3, MessageID: 2, Version: 1},
+			Author:    &bundle.Author{Name: "Ada Reviewer", Email: "ada@chatwright.dev"},
+			CreatedAt: fixedAt.Add(10 * time.Second),
+			Text:      "See how instead of $4 bot returned 4$",
+		},
+		{
+			ID:        "note-2",
+			Anchor:    bundle.Anchor{ChatID: 42, EntryIndex: 3, MessageID: 2, Version: 1},
+			Author:    &bundle.Author{Name: "Sam Maintainer", Email: "sam@chatwright.dev"},
+			CreatedAt: fixedAt.Add(20 * time.Second),
+			Text:      "Good catch — filed as a display bug.",
+			ReplyTo:   "note-1",
+		},
+	}
+
 	run := bundle.SingleAIGoalRun(bundle.SingleAIGoalRunInput{
 		RunID: "run-1", Platform: "telegram", EndpointProfile: bundle.EndpointProfilePlatformEmulated,
 		Actors: actors, Chats: chats,
@@ -129,12 +150,15 @@ func goldenBundle() bundle.Bundle {
 		Observations: observations,
 		Report:       report,
 		Evidence:     evidence,
+		Bookmarks:    bookmarks,
+		Annotations:  annotations,
 	})
 
 	return bundle.Bundle{
 		Format: bundle.FormatV1,
 		Metadata: bundle.Metadata{
 			CreatedAt: fixedAt,
+			Author:    &bundle.Author{Name: "Ada Reviewer", Email: "ada@chatwright.dev"},
 		},
 		Runs: []bundle.Run{run},
 	}
@@ -272,6 +296,44 @@ func TestBundleReadAcceptsDeterministicPartWithNoSection(t *testing.T) {
 	}
 	if len(decoded.Runs) != 1 || len(decoded.Runs[0].Parts) != 1 || decoded.Runs[0].Parts[0].Kind != bundle.PartKindDeterministic {
 		t.Fatalf("decoded = %+v, want one run with one deterministic part", decoded)
+	}
+}
+
+// TestBundleReadToleratesDanglingAnnotationReferences proves Read accepts a
+// Bundle whose Annotation.ReplyTo names an Annotation ID this Run does not
+// carry, and whose Anchor.EntryIndex is out of range for the chat it names —
+// bundles are hand-editable files, and Annotation's own doc comment declares
+// that surfacing a dangling reference is a consumer's concern, never a Read
+// error.
+func TestBundleReadToleratesDanglingAnnotationReferences(t *testing.T) {
+	payload := `{
+		"format": "https://chatwright.dev/formats/run-bundle/v1",
+		"metadata": {"createdAt": "2026-07-22T12:00:00Z"},
+		"runs": [{
+			"id": "run-1", "platform": "telegram", "endpointProfile": "platform-emulated",
+			"actors": [], "chats": [{"chatId": 42, "entries": []}],
+			"parts": [],
+			"annotations": [
+				{
+					"id": "note-1",
+					"anchor": {"chatId": 42, "entryIndex": 999},
+					"createdAt": "2026-07-22T12:00:00Z",
+					"text": "replies to a note that does not exist",
+					"replyTo": "note-does-not-exist"
+				}
+			]
+		}]
+	}`
+	decoded, err := bundle.Read(strings.NewReader(payload))
+	if err != nil {
+		t.Fatalf("Read() error = %v, want a dangling replyTo/out-of-range anchor to be accepted", err)
+	}
+	if len(decoded.Runs) != 1 || len(decoded.Runs[0].Annotations) != 1 {
+		t.Fatalf("decoded = %+v, want one run with one annotation", decoded)
+	}
+	got := decoded.Runs[0].Annotations[0]
+	if got.ReplyTo != "note-does-not-exist" || got.Anchor.EntryIndex != 999 {
+		t.Fatalf("decoded annotation = %+v, want the dangling references carried through verbatim", got)
 	}
 }
 

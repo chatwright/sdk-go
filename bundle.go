@@ -24,6 +24,14 @@
 // Filename convention: a Bundle file is named "<anything>.chatwright.json"
 // (e.g. "greetbot-language.chatwright.json") so a player, a file browser or
 // a directory listing can recognize one at a glance.
+//
+// The full wire shape is also published as a JSON Schema, generated from
+// these Go types (see internal/schemagen) and committed at
+// formats/run-bundle/v1/schema.json; bundle/schema_test.go gates both that
+// the schema stays in sync with these types and that a Bundle this package
+// produces validates against it.
+//
+//go:generate go run ../internal/schemagen/gen
 package bundle
 
 import (
@@ -98,6 +106,24 @@ type Metadata struct {
 	// "(devel)"; see ModuleVersion's doc comment). "If available" is
 	// load-bearing: a Bundle is still valid and complete without it.
 	ChatwrightVersion string `json:"chatwrightVersion,omitempty"`
+
+	// Author optionally attributes this Bundle to whoever assembled it.
+	// Never populated automatically from git config, the OS user or any
+	// other ambient environment — a caller must supply it explicitly, or
+	// leave it nil. Bundles get emailed and committed to public
+	// repositories, so silently harvesting an identity into one is not this
+	// package's call to make.
+	Author *Author `json:"author,omitempty"`
+}
+
+// Author optionally attributes provenance to a Bundle (Metadata.Author) or to
+// an Annotation (Annotation.Author). Both fields are optional free-text
+// strings — this package does not validate an email's shape or resolve a
+// name against any identity system. See Metadata.Author's doc comment for
+// why it is always caller-supplied, never auto-populated.
+type Author struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email,omitempty"`
 }
 
 // Run is one run's complete, self-contained record: who was in the
@@ -142,6 +168,89 @@ type Run struct {
 	// shape is what a future hybrid run (deterministic passages interleaved
 	// with ai-goal exploration) composes without any schema change.
 	Parts []Part `json:"parts"`
+
+	// Bookmarks is an optional list of manual fast-forward markers a player
+	// can offer alongside this run's own derived markers — part boundaries,
+	// task completions, findings and the like need no schema entry here,
+	// since a player derives them directly from Parts/AIGoalSection; a
+	// Bookmark is only for a marker no derivation already produces. Today's
+	// writers (SingleAIGoalRun) emit none unless the caller supplies them.
+	Bookmarks []Bookmark `json:"bookmarks,omitempty"`
+
+	// Annotations is an optional list of comments attached to moments in
+	// this run's conversation — see Annotation. Today's writers
+	// (SingleAIGoalRun) emit none unless the caller supplies them.
+	Annotations []Annotation `json:"annotations,omitempty"`
+}
+
+// Bookmark is a manual fast-forward marker for a player: a caller-chosen
+// point in the run's journal worth jumping straight to. Bookmark exists only
+// for markers a player cannot already derive on its own — part boundaries,
+// task completions and campaign.Finding entries are all recoverable from
+// Run.Parts/AIGoalSection directly, so nothing here should duplicate those;
+// use a Bookmark for the rest (e.g. "the moment the bug reproduced").
+type Bookmark struct {
+	// ID is caller-supplied and only needs to be unique within its Run.
+	ID string `json:"id"`
+	// Title is the human-readable label a player shows for this marker.
+	Title string `json:"title"`
+	// Anchor locates the marker in the run's journal — see Anchor.
+	Anchor Anchor `json:"anchor"`
+}
+
+// Annotation is a comment attached to one moment of this run's conversation
+// — e.g. "See how instead of $4 bot returned 4$". ReplyTo threads Annotations
+// into a conversation about a message: a root Annotation leaves ReplyTo
+// empty, a reply names the Annotation.ID it responds to.
+//
+// Read-side tolerance: a ReplyTo naming an Annotation ID this Run does not
+// actually carry, and an Anchor whose EntryIndex (or MessageID/Version) does
+// not resolve against the referenced chat, are both NOT errors from Read —
+// bundles are hand-editable files, and a consumer must be prepared to
+// surface a dangling reference rather than assume Read already validated it.
+// See TestBundleReadToleratesDanglingAnnotationReferences.
+type Annotation struct {
+	// ID is caller-supplied and only needs to be unique within its Run.
+	ID string `json:"id"`
+	// Anchor locates the annotated moment in the run's journal — see Anchor.
+	Anchor Anchor `json:"anchor"`
+	// Author optionally attributes this Annotation — see Author's own doc
+	// comment (never auto-populated).
+	Author *Author `json:"author,omitempty"`
+	// CreatedAt is when this Annotation was authored, supplied by the
+	// caller — see Metadata.CreatedAt's own doc comment on why this package
+	// never stamps a time itself.
+	CreatedAt time.Time `json:"createdAt"`
+	// Text is the annotation's own comment body.
+	Text string `json:"text"`
+	// ReplyTo optionally names another Annotation.ID in this Run that this
+	// one replies to, threading both into one conversation about a message.
+	// Empty for a root Annotation.
+	ReplyTo string `json:"replyTo,omitempty"`
+}
+
+// Anchor locates one moment in a run's journal, shared by Bookmark and
+// Annotation. ChatID and EntryIndex are required and always resolvable
+// against Run.Chats for a Bundle this package wrote; MessageID and Version
+// are optional and, together, pin an exact revision of an edited message —
+// versioned message identity — rather than whatever its latest version
+// happens to be by the time a player renders it.
+type Anchor struct {
+	// ChatID names the Run.Chats entry this anchor points into.
+	ChatID int64 `json:"chatId"`
+	// EntryIndex is the index into that ChatJournal.Entries this anchor
+	// points at.
+	EntryIndex int `json:"entryIndex"`
+	// MessageID optionally pins the logical message (platform.JournalEntry.
+	// MessageID) this anchor is about, when it is more specific than "this
+	// journal entry" — e.g. an Annotation about a message that was later
+	// edited, anchored to the message rather than to one particular edit.
+	MessageID int `json:"messageId,omitempty"`
+	// Version optionally pins the exact edit (platform.JournalEntry.
+	// Version) MessageID was at, so an Annotation about "this specific
+	// wording" survives a later edit instead of silently retargeting to the
+	// message's newest version.
+	Version int `json:"version,omitempty"`
 }
 
 // ChatJournal is one chat's complete structured journal — the same
@@ -407,6 +516,13 @@ type SingleAIGoalRunInput struct {
 	Observations []RetainedObservation
 	Report       campaign.Report
 	Evidence     []datastate.Evidence
+
+	// Bookmarks and Annotations become the Run's own fields verbatim — see
+	// Run.Bookmarks, Run.Annotations. Both are optional: a caller with
+	// nothing to attach leaves them nil, and the resulting Run carries none
+	// (SingleAIGoalRun never invents one).
+	Bookmarks   []Bookmark
+	Annotations []Annotation
 }
 
 // SingleAIGoalRun builds a Run containing exactly one ai-goal Part whose
@@ -448,6 +564,8 @@ func SingleAIGoalRun(in SingleAIGoalRunInput) Run {
 		Actors:          in.Actors,
 		Chats:           in.Chats,
 		Parts:           []Part{part},
+		Bookmarks:       in.Bookmarks,
+		Annotations:     in.Annotations,
 	}
 }
 
