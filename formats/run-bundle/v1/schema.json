@@ -4,7 +4,7 @@
   "$defs": {
     "ActorActionOutcome": {
       "properties": {
-        "Kind": {
+        "kind": {
           "type": "string",
           "enum": [
             "skipped-invalid",
@@ -15,61 +15,61 @@
             "task-given-up"
           ]
         },
-        "Detail": {
+        "detail": {
           "type": "string"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Kind",
-        "Detail"
+        "kind",
+        "detail"
       ]
     },
     "ActorLoopEvent": {
       "properties": {
-        "Index": {
+        "index": {
           "type": "integer"
         },
-        "At": {
+        "at": {
           "type": "string",
           "format": "date-time"
         },
-        "TaskID": {
+        "taskId": {
           "type": "string"
         },
-        "ObservationSequence": {
+        "observationSequence": {
           "type": "integer"
         },
-        "Proposal": {
+        "proposal": {
           "$ref": "#/$defs/ActorProposal"
         },
-        "Usage": {
+        "usage": {
           "$ref": "#/$defs/ActorUsage"
         },
-        "Validation": {
+        "validation": {
           "$ref": "#/$defs/ActorValidationOutcome"
         },
-        "Action": {
+        "action": {
           "$ref": "#/$defs/ActorActionOutcome"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Index",
-        "At",
-        "TaskID",
-        "ObservationSequence",
-        "Proposal",
-        "Usage",
-        "Validation",
-        "Action"
+        "index",
+        "at",
+        "taskId",
+        "observationSequence",
+        "proposal",
+        "usage",
+        "validation",
+        "action"
       ]
     },
     "ActorProposal": {
       "properties": {
-        "Kind": {
+        "kind": {
           "type": "string",
           "enum": [
             "send-text",
@@ -78,41 +78,41 @@
             "give-up"
           ]
         },
-        "Text": {
+        "text": {
           "type": "string"
         },
-        "ActionID": {
+        "actionId": {
           "type": "string"
         },
-        "ObservationSequence": {
+        "observationSequence": {
           "type": "integer"
         },
-        "Rationale": {
+        "rationale": {
           "type": "string"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Kind",
-        "Text",
-        "ActionID",
-        "ObservationSequence",
-        "Rationale"
+        "kind",
+        "text",
+        "actionId",
+        "observationSequence",
+        "rationale"
       ]
     },
     "ActorUsage": {
       "properties": {
-        "Model": {
+        "model": {
           "type": "string"
         },
-        "InputTokens": {
+        "inputTokens": {
           "type": "integer"
         },
-        "OutputTokens": {
+        "outputTokens": {
           "type": "integer"
         },
-        "Latency": {
+        "latencyNanoseconds": {
           "type": "integer"
         },
         "cost": {
@@ -122,18 +122,18 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Model",
-        "InputTokens",
-        "OutputTokens",
-        "Latency"
+        "model",
+        "inputTokens",
+        "outputTokens",
+        "latencyNanoseconds"
       ]
     },
     "ActorValidationOutcome": {
       "properties": {
-        "Checked": {
+        "checked": {
           "type": "boolean"
         },
-        "Verdict": {
+        "verdict": {
           "type": "string",
           "enum": [
             "",
@@ -141,16 +141,16 @@
             "stale"
           ]
         },
-        "Reason": {
+        "reason": {
           "type": "string"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Checked",
-        "Verdict",
-        "Reason"
+        "checked",
+        "verdict",
+        "reason"
       ]
     },
     "BundleAIGoalSection": {
@@ -723,19 +723,19 @@
     },
     "DatastateEvidence": {
       "properties": {
-        "Name": {
+        "name": {
           "type": "string"
         },
-        "AttachmentPoint": {
+        "attachmentPoint": {
           "type": "string"
         },
-        "Holder": {
+        "holder": {
           "type": "string"
         },
-        "Query": {
+        "query": {
           "type": "string"
         },
-        "Params": {
+        "params": {
           "oneOf": [
             {
               "type": "object"
@@ -745,22 +745,22 @@
             }
           ]
         },
-        "Outcome": {
+        "outcome": {
           "type": "string"
         },
-        "FailureMessage": {
+        "failureMessage": {
           "type": "string"
         },
-        "TotalRows": {
+        "totalRows": {
           "type": "integer"
         },
-        "ReturnedRows": {
+        "returnedRows": {
           "type": "integer"
         },
-        "Truncated": {
+        "truncated": {
           "type": "boolean"
         },
-        "Preview": {
+        "preview": {
           "oneOf": [
             {
               "items": {
@@ -773,7 +773,7 @@
             }
           ]
         },
-        "RedactedFields": {
+        "redactedFields": {
           "oneOf": [
             {
               "items": {
@@ -786,7 +786,7 @@
             }
           ]
         },
-        "ExcludedFields": {
+        "excludedFields": {
           "oneOf": [
             {
               "items": {
@@ -803,19 +803,19 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Name",
-        "AttachmentPoint",
-        "Holder",
-        "Query",
-        "Params",
-        "Outcome",
-        "FailureMessage",
-        "TotalRows",
-        "ReturnedRows",
-        "Truncated",
-        "Preview",
-        "RedactedFields",
-        "ExcludedFields"
+        "name",
+        "attachmentPoint",
+        "holder",
+        "query",
+        "params",
+        "outcome",
+        "failureMessage",
+        "totalRows",
+        "returnedRows",
+        "truncated",
+        "preview",
+        "redactedFields",
+        "excludedFields"
       ]
     },
     "DatastateRow": {
@@ -823,16 +823,16 @@
     },
     "GoalBudgets": {
       "properties": {
-        "MaxSteps": {
+        "maxSteps": {
           "type": "integer"
         },
-        "MaxDuration": {
+        "maxDurationNanoseconds": {
           "type": "integer"
         },
-        "MaxRepeatedFailures": {
+        "maxRepeatedFailures": {
           "type": "integer"
         },
-        "MaxCost": {
+        "maxCost": {
           "oneOf": [
             {
               "type": "number"
@@ -846,24 +846,24 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "MaxSteps",
-        "MaxDuration",
-        "MaxRepeatedFailures",
-        "MaxCost"
+        "maxSteps",
+        "maxDurationNanoseconds",
+        "maxRepeatedFailures",
+        "maxCost"
       ]
     },
     "GoalGoal": {
       "properties": {
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Title": {
+        "title": {
           "type": "string"
         },
-        "Description": {
+        "description": {
           "type": "string"
         },
-        "Tasks": {
+        "tasks": {
           "oneOf": [
             {
               "items": {
@@ -876,7 +876,7 @@
             }
           ]
         },
-        "Constraints": {
+        "constraints": {
           "oneOf": [
             {
               "items": {
@@ -889,30 +889,30 @@
             }
           ]
         },
-        "Budgets": {
+        "budgets": {
           "$ref": "#/$defs/GoalBudgets"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "ID",
-        "Title",
-        "Description",
-        "Tasks",
-        "Constraints",
-        "Budgets"
+        "id",
+        "title",
+        "description",
+        "tasks",
+        "constraints",
+        "budgets"
       ]
     },
     "GoalTask": {
       "properties": {
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Title": {
+        "title": {
           "type": "string"
         },
-        "DependsOn": {
+        "dependsOn": {
           "oneOf": [
             {
               "items": {
@@ -925,10 +925,10 @@
             }
           ]
         },
-        "SuccessCriteria": {
+        "successCriteria": {
           "type": "string"
         },
-        "Milestones": {
+        "milestones": {
           "oneOf": [
             {
               "items": {
@@ -945,36 +945,36 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "ID",
-        "Title",
-        "DependsOn",
-        "SuccessCriteria",
-        "Milestones"
+        "id",
+        "title",
+        "dependsOn",
+        "successCriteria",
+        "milestones"
       ]
     },
     "ObserveAvailableAction": {
       "properties": {
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Label": {
+        "label": {
           "type": "string"
         },
-        "SeenAt": {
+        "seenAt": {
           "type": "integer"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "ID",
-        "Label",
-        "SeenAt"
+        "id",
+        "label",
+        "seenAt"
       ]
     },
     "ObserveChange": {
       "properties": {
-        "Kind": {
+        "kind": {
           "type": "string",
           "enum": [
             "new-message",
@@ -982,57 +982,57 @@
             "actions-changed"
           ]
         },
-        "MessageID": {
+        "messageId": {
           "type": "string"
         },
-        "Actor": {
+        "actor": {
           "type": "string",
           "enum": [
             "user",
             "bot"
           ]
         },
-        "PreviousVersion": {
+        "previousVersion": {
           "type": "integer"
         },
-        "Version": {
+        "version": {
           "type": "integer"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Kind",
-        "MessageID",
-        "Actor",
-        "PreviousVersion",
-        "Version"
+        "kind",
+        "messageId",
+        "actor",
+        "previousVersion",
+        "version"
       ]
     },
     "ObserveChatRef": {
       "properties": {
-        "ChatID": {
+        "chatId": {
           "type": "integer"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "ChatID"
+        "chatId"
       ]
     },
     "ObserveObservation": {
       "properties": {
-        "Sequence": {
+        "sequence": {
           "type": "integer"
         },
-        "PreviousSequence": {
+        "previousSequence": {
           "type": "integer"
         },
-        "Chat": {
+        "chat": {
           "$ref": "#/$defs/ObserveChatRef"
         },
-        "Messages": {
+        "messages": {
           "oneOf": [
             {
               "items": {
@@ -1045,7 +1045,7 @@
             }
           ]
         },
-        "Changes": {
+        "changes": {
           "oneOf": [
             {
               "items": {
@@ -1062,35 +1062,35 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Sequence",
-        "PreviousSequence",
-        "Chat",
-        "Messages",
-        "Changes"
+        "sequence",
+        "previousSequence",
+        "chat",
+        "messages",
+        "changes"
       ]
     },
     "ObserveVisibleMessage": {
       "properties": {
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Version": {
+        "version": {
           "type": "integer"
         },
-        "Edited": {
+        "edited": {
           "type": "boolean"
         },
-        "Actor": {
+        "actor": {
           "type": "string",
           "enum": [
             "user",
             "bot"
           ]
         },
-        "Text": {
+        "text": {
           "type": "string"
         },
-        "Actions": {
+        "actions": {
           "oneOf": [
             {
               "items": {
@@ -1107,44 +1107,44 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "ID",
-        "Version",
-        "Edited",
-        "Actor",
-        "Text",
-        "Actions"
+        "id",
+        "version",
+        "edited",
+        "actor",
+        "text",
+        "actions"
       ]
     },
     "PlatformAction": {
       "properties": {
-        "Label": {
+        "label": {
           "type": "string"
         },
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "URL": {
+        "url": {
           "type": "string"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Label",
-        "ID",
-        "URL"
+        "label",
+        "id",
+        "url"
       ]
     },
     "PlatformJournalEntry": {
       "properties": {
-        "Direction": {
+        "direction": {
           "type": "string",
           "enum": [
             "user",
             "bot"
           ]
         },
-        "Kind": {
+        "kind": {
           "type": "string",
           "enum": [
             "message",
@@ -1152,19 +1152,19 @@
             "uncaptured"
           ]
         },
-        "MessageID": {
+        "messageId": {
           "type": "integer"
         },
-        "RefMessageID": {
+        "refMessageId": {
           "type": "integer"
         },
-        "Version": {
+        "version": {
           "type": "integer"
         },
-        "Text": {
+        "text": {
           "type": "string"
         },
-        "Actions": {
+        "actions": {
           "oneOf": [
             {
               "items": {
@@ -1180,30 +1180,30 @@
             }
           ]
         },
-        "Method": {
+        "method": {
           "type": "string"
         },
-        "At": {
+        "at": {
           "type": "string",
           "format": "date-time"
         },
-        "FromID": {
+        "fromId": {
           "type": "integer"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Direction",
-        "Kind",
-        "MessageID",
-        "RefMessageID",
-        "Version",
-        "Text",
-        "Actions",
-        "Method",
-        "At",
-        "FromID"
+        "direction",
+        "kind",
+        "messageId",
+        "refMessageId",
+        "version",
+        "text",
+        "actions",
+        "method",
+        "at",
+        "fromId"
       ]
     }
   },

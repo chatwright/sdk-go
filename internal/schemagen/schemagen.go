@@ -15,21 +15,24 @@
 //     the clobbered type quietly points at the wrong shape instead.
 //     qualifiedTypeName (via Reflector.Namer) disambiguates every $defs key
 //     by package so this cannot happen.
-//   - Nullable non-omitempty slices, maps and pointers: most of this
-//     module's types (goal.Goal, platform.JournalEntry, observe.Observation,
-//     datastate.Evidence, ...) carry no `json` tags at all, so encoding/json
-//     falls back to its default behaviour — and a nil slice, map or pointer
-//     field with no `omitempty` option marshals as JSON null, not as that
-//     field's "empty" form ([], {} or an absent property). This is the
-//     everyday, common case (e.g. any goal.Task with no DependsOn), not a
-//     corner case, and it shows up throughout the golden bundle
-//     ("Actions": null, "Changes": null, ...). invopop/jsonschema has no
+//   - Nullable non-omitempty slices, maps and pointers: every exported field
+//     reaching bundle JSON (goal.Goal, platform.JournalEntry,
+//     observe.Observation, datastate.Evidence, ...) carries an explicit
+//     lower-camel-case `json` tag — the whole run-bundle wire is uniformly
+//     camelCase — but most of those tags carry no `omitempty` option, so
+//     encoding/json's default behaviour still applies to presence: a nil
+//     slice, map or pointer field with no `omitempty` marshals as JSON null,
+//     not as that field's "empty" form ([], {} or an absent property). This
+//     is the everyday, common case (e.g. any goal.Task with no DependsOn),
+//     not a corner case, and it shows up throughout the golden bundle
+//     ("actions": null, "changes": null, ...). invopop/jsonschema has no
 //     notion of this at all — a plain reflected schema types every one of
 //     these fields as a bare "array"/"object", which would reject a huge
 //     share of bundles this module's own code legitimately produces.
 //     applyNullablePatches walks the real Go type graph reachable from
-//     bundle.Bundle (mirroring encoding/json's own tag rules) and widens
-//     every such field to also accept null.
+//     bundle.Bundle (mirroring encoding/json's own tag rules, now reading
+//     each field's tagged name rather than falling back to its exported Go
+//     name) and widens every such field to also accept null.
 //
 // See Generate.
 package schemagen
@@ -143,15 +146,16 @@ func capitalize(s string) string {
 // overwrites a property schema's Description from the field's (here, absent)
 // `jsonschema_description` struct tag after this Mapper runs, so anything
 // set here would be silently discarded — see reflect.go's handleField. Using
-// that tag instead would mean adding jsonschema-only struct tags to
-// platform/observe/actor's plain, tag-free domain types purely for schema
-// cosmetics, which this generator deliberately avoids.
+// that tag instead would mean adding jsonschema-only struct tags (distinct
+// from the `json` tags platform/observe/actor's domain types already carry
+// for wire-casing) to those types purely for schema cosmetics, which this
+// generator deliberately avoids.
 //
 // observe.Verdict is the one enum whose Go zero value ("") is itself a real,
 // meaningful wire value, not an unset placeholder to reject: actor.
 // ValidationOutcome.Verdict is documented as "meaningless when Checked is
 // false", and the loop leaves it at "" in exactly that case (see the golden
-// bundle's own "Verdict": ""). Its enum lists "" alongside "fresh"/"stale"
+// bundle's own "verdict": ""). Its enum lists "" alongside "fresh"/"stale"
 // so the set stays closed — every value the wire actually carries — rather
 // than silently rejecting real, correct output. Every other enum below is
 // unconditionally assigned one of its named constants by every producer in
@@ -195,7 +199,7 @@ func enumSchema[T ~string](values ...T) *jsonschema.Schema {
 // output instead of a bare reflected type. See the package doc comment's
 // second bullet. Left uncorrected, TestGoldenBundleValidatesAgainstSchema
 // would fail: schema validation would reject the golden bundle's own literal
-// nulls (e.g. "Actions": null, "Changes": null).
+// nulls (e.g. "actions": null, "changes": null).
 //
 // It walks the real Go type graph reachable from bundle.Bundle (the same
 // graph the reflector itself walked to build schema), deriving each field's

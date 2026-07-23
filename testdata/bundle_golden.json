@@ -48,60 +48,60 @@
           "chatId": 42,
           "entries": [
             {
-              "Direction": "user",
-              "Kind": "message",
-              "MessageID": 1,
-              "RefMessageID": 0,
-              "Version": 0,
-              "Text": "Hi",
-              "Actions": null,
-              "Method": "",
-              "At": "2026-07-22T12:00:00Z",
-              "FromID": 7
+              "direction": "user",
+              "kind": "message",
+              "messageId": 1,
+              "refMessageId": 0,
+              "version": 0,
+              "text": "Hi",
+              "actions": null,
+              "method": "",
+              "at": "2026-07-22T12:00:00Z",
+              "fromId": 7
             },
             {
-              "Direction": "bot",
-              "Kind": "message",
-              "MessageID": 2,
-              "RefMessageID": 0,
-              "Version": 0,
-              "Text": "Choose your language:",
-              "Actions": [
+              "direction": "bot",
+              "kind": "message",
+              "messageId": 2,
+              "refMessageId": 0,
+              "version": 0,
+              "text": "Choose your language:",
+              "actions": [
                 [
                   {
-                    "Label": "English",
-                    "ID": "act1",
-                    "URL": ""
+                    "label": "English",
+                    "id": "act1",
+                    "url": ""
                   }
                 ]
               ],
-              "Method": "",
-              "At": "2026-07-22T12:00:01Z",
-              "FromID": 1
+              "method": "",
+              "at": "2026-07-22T12:00:01Z",
+              "fromId": 1
             },
             {
-              "Direction": "user",
-              "Kind": "action",
-              "MessageID": 0,
-              "RefMessageID": 2,
-              "Version": 0,
-              "Text": "act1",
-              "Actions": null,
-              "Method": "",
-              "At": "2026-07-22T12:00:02Z",
-              "FromID": 7
+              "direction": "user",
+              "kind": "action",
+              "messageId": 0,
+              "refMessageId": 2,
+              "version": 0,
+              "text": "act1",
+              "actions": null,
+              "method": "",
+              "at": "2026-07-22T12:00:02Z",
+              "fromId": 7
             },
             {
-              "Direction": "bot",
-              "Kind": "message",
-              "MessageID": 2,
-              "RefMessageID": 0,
-              "Version": 1,
-              "Text": "Howdy stranger",
-              "Actions": null,
-              "Method": "",
-              "At": "2026-07-22T12:00:03Z",
-              "FromID": 1
+              "direction": "bot",
+              "kind": "message",
+              "messageId": 2,
+              "refMessageId": 0,
+              "version": 1,
+              "text": "Howdy stranger",
+              "actions": null,
+              "method": "",
+              "at": "2026-07-22T12:00:03Z",
+              "fromId": 1
             }
           ]
         }
@@ -122,83 +122,83 @@
           },
           "aiGoal": {
             "goal": {
-              "ID": "listus",
-              "Title": "Exercise onboarding",
-              "Description": "",
-              "Tasks": [
+              "id": "listus",
+              "title": "Exercise onboarding",
+              "description": "",
+              "tasks": [
                 {
-                  "ID": "onboarding",
-                  "Title": "Complete onboarding",
-                  "DependsOn": null,
-                  "SuccessCriteria": "user completes language selection",
-                  "Milestones": null
+                  "id": "onboarding",
+                  "title": "Complete onboarding",
+                  "dependsOn": null,
+                  "successCriteria": "user completes language selection",
+                  "milestones": null
                 }
               ],
-              "Constraints": null,
-              "Budgets": {
-                "MaxSteps": 0,
-                "MaxDuration": 0,
-                "MaxRepeatedFailures": 0,
-                "MaxCost": null
+              "constraints": null,
+              "budgets": {
+                "maxSteps": 0,
+                "maxDurationNanoseconds": 0,
+                "maxRepeatedFailures": 0,
+                "maxCost": null
               }
             },
             "actorId": "explorer",
             "events": [
               {
-                "Index": 0,
-                "At": "2026-07-22T12:00:00Z",
-                "TaskID": "onboarding",
-                "ObservationSequence": 1,
-                "Proposal": {
-                  "Kind": "send-text",
-                  "Text": "Hi",
-                  "ActionID": "",
-                  "ObservationSequence": 0,
-                  "Rationale": "start the conversation"
+                "index": 0,
+                "at": "2026-07-22T12:00:00Z",
+                "taskId": "onboarding",
+                "observationSequence": 1,
+                "proposal": {
+                  "kind": "send-text",
+                  "text": "Hi",
+                  "actionId": "",
+                  "observationSequence": 0,
+                  "rationale": "start the conversation"
                 },
-                "Usage": {
-                  "Model": "claude-haiku-4-5",
-                  "InputTokens": 5,
-                  "OutputTokens": 2,
-                  "Latency": 0,
+                "usage": {
+                  "model": "claude-haiku-4-5",
+                  "inputTokens": 5,
+                  "outputTokens": 2,
+                  "latencyNanoseconds": 0,
                   "cost": 0.3
                 },
-                "Validation": {
-                  "Checked": false,
-                  "Verdict": "",
-                  "Reason": ""
+                "validation": {
+                  "checked": false,
+                  "verdict": "",
+                  "reason": ""
                 },
-                "Action": {
-                  "Kind": "executed",
-                  "Detail": ""
+                "action": {
+                  "kind": "executed",
+                  "detail": ""
                 }
               },
               {
-                "Index": 1,
-                "At": "2026-07-22T12:00:01Z",
-                "TaskID": "onboarding",
-                "ObservationSequence": 2,
-                "Proposal": {
-                  "Kind": "task-done",
-                  "Text": "",
-                  "ActionID": "",
-                  "ObservationSequence": 0,
-                  "Rationale": "onboarding confirmed"
+                "index": 1,
+                "at": "2026-07-22T12:00:01Z",
+                "taskId": "onboarding",
+                "observationSequence": 2,
+                "proposal": {
+                  "kind": "task-done",
+                  "text": "",
+                  "actionId": "",
+                  "observationSequence": 0,
+                  "rationale": "onboarding confirmed"
                 },
-                "Usage": {
-                  "Model": "",
-                  "InputTokens": 0,
-                  "OutputTokens": 0,
-                  "Latency": 0
+                "usage": {
+                  "model": "",
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "latencyNanoseconds": 0
                 },
-                "Validation": {
-                  "Checked": false,
-                  "Verdict": "",
-                  "Reason": ""
+                "validation": {
+                  "checked": false,
+                  "verdict": "",
+                  "reason": ""
                 },
-                "Action": {
-                  "Kind": "task-completed",
-                  "Detail": ""
+                "action": {
+                  "kind": "task-completed",
+                  "detail": ""
                 }
               }
             ],
@@ -206,63 +206,63 @@
               {
                 "sequence": 1,
                 "observation": {
-                  "Sequence": 1,
-                  "PreviousSequence": 0,
-                  "Chat": {
-                    "ChatID": 42
+                  "sequence": 1,
+                  "previousSequence": 0,
+                  "chat": {
+                    "chatId": 42
                   },
-                  "Messages": [
+                  "messages": [
                     {
-                      "ID": "msg1",
-                      "Version": 0,
-                      "Edited": false,
-                      "Actor": "user",
-                      "Text": "Hi",
-                      "Actions": null
+                      "id": "msg1",
+                      "version": 0,
+                      "edited": false,
+                      "actor": "user",
+                      "text": "Hi",
+                      "actions": null
                     }
                   ],
-                  "Changes": null
+                  "changes": null
                 }
               },
               {
                 "sequence": 2,
                 "observation": {
-                  "Sequence": 2,
-                  "PreviousSequence": 1,
-                  "Chat": {
-                    "ChatID": 42
+                  "sequence": 2,
+                  "previousSequence": 1,
+                  "chat": {
+                    "chatId": 42
                   },
-                  "Messages": [
+                  "messages": [
                     {
-                      "ID": "msg1",
-                      "Version": 0,
-                      "Edited": false,
-                      "Actor": "user",
-                      "Text": "Hi",
-                      "Actions": null
+                      "id": "msg1",
+                      "version": 0,
+                      "edited": false,
+                      "actor": "user",
+                      "text": "Hi",
+                      "actions": null
                     },
                     {
-                      "ID": "msg2",
-                      "Version": 0,
-                      "Edited": false,
-                      "Actor": "bot",
-                      "Text": "Choose your language:",
-                      "Actions": [
+                      "id": "msg2",
+                      "version": 0,
+                      "edited": false,
+                      "actor": "bot",
+                      "text": "Choose your language:",
+                      "actions": [
                         {
-                          "ID": "act1",
-                          "Label": "English",
-                          "SeenAt": 2
+                          "id": "act1",
+                          "label": "English",
+                          "seenAt": 2
                         }
                       ]
                     }
                   ],
-                  "Changes": [
+                  "changes": [
                     {
-                      "Kind": "new-message",
-                      "MessageID": "msg2",
-                      "Actor": "bot",
-                      "PreviousVersion": 0,
-                      "Version": 0
+                      "kind": "new-message",
+                      "messageId": "msg2",
+                      "actor": "bot",
+                      "previousVersion": 0,
+                      "version": 0
                     }
                   ]
                 }
@@ -296,25 +296,25 @@
             },
             "evidence": [
               {
-                "Name": "onboarding-language",
-                "AttachmentPoint": "after-message",
-                "Holder": "listusdb",
-                "Query": "SELECT language FROM users WHERE id = @userId",
-                "Params": {
+                "name": "onboarding-language",
+                "attachmentPoint": "after-message",
+                "holder": "listusdb",
+                "query": "SELECT language FROM users WHERE id = @userId",
+                "params": {
                   "userId": "u1"
                 },
-                "Outcome": "passed",
-                "FailureMessage": "",
-                "TotalRows": 1,
-                "ReturnedRows": 1,
-                "Truncated": false,
-                "Preview": [
+                "outcome": "passed",
+                "failureMessage": "",
+                "totalRows": 1,
+                "returnedRows": 1,
+                "truncated": false,
+                "preview": [
                   {
                     "language": "en"
                   }
                 ],
-                "RedactedFields": null,
-                "ExcludedFields": null
+                "redactedFields": null,
+                "excludedFields": null
               }
             ]
           }
