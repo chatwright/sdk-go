@@ -6,7 +6,10 @@ import "time"
 // a string type, not an int enum, so it marshals to human-readable JSON — in
 // bundles, cassette files and everywhere else — rather than a bare,
 // meaningless integer (see the Chatwright standard's "JSON artefacts carry
-// human-readable string constants" convention).
+// human-readable string constants" convention). Its Go zero value ("") is
+// itself a real, meaningful wire value, not only an unset placeholder: a
+// LoopEvent whose ProposeError is set carries a zero-value Proposal (there
+// was no proposal to have a Kind), and "" is what that Kind reads as.
 type ProposalKind string
 
 // Proposal kinds. See Proposal.
@@ -75,7 +78,11 @@ type ValidationOutcome struct {
 // proposal, or why it did not act at all. It is a string type, not an int
 // enum, so it marshals to human-readable JSON (see the Chatwright standard's
 // "JSON artefacts carry human-readable string constants" convention) rather
-// than a bare, meaningless integer.
+// than a bare, meaningless integer. Its Go zero value ("") is itself a real,
+// meaningful wire value, not only an unset placeholder: a LoopEvent whose
+// ProposeError is set carries a zero-value ActionOutcome (there was no
+// action to have a Kind — the loop never got a Proposal to act on), and ""
+// is what that Kind reads as.
 type ActionOutcomeKind string
 
 // Action outcome kinds. See ActionOutcome.
@@ -146,4 +153,16 @@ type LoopEvent struct {
 	// Action is what actually happened when the loop tried to act on
 	// Proposal (or why it did not).
 	Action ActionOutcome `json:"action"`
+
+	// ProposeError is set exactly when this iteration's call to the AI
+	// provider's Propose failed: it carries the returned error's own
+	// message (error.Error()), and Proposal, Usage, Validation and Action
+	// are all their zero value — there was nothing to validate or act on.
+	// Empty for every iteration that got as far as a Proposal, which is
+	// most of them; this field exists so a failed Propose call still leaves
+	// a LoopEvent behind (index, timestamp, task, the observation it was
+	// attempting to act from) instead of vanishing from the record with
+	// only a returned Go error nobody downstream of the loop ever sees
+	// (github.com/chatwright/runtime-go issue #4).
+	ProposeError string `json:"proposeError,omitempty"`
 }

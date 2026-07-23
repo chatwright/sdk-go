@@ -199,16 +199,26 @@ func defsName(t reflect.Type) string {
 // those types purely for schema cosmetics, which this generator deliberately
 // avoids.
 //
-// sdk.Verdict is the one enum whose Go zero value ("") is itself a real,
-// meaningful wire value, not an unset placeholder to reject:
-// ValidationOutcome.Verdict is documented as "meaningless when Checked is
-// false", and the runtime's loop leaves it at "" in exactly that case (see
-// the golden bundle's own "verdict": ""). Its enum lists "" alongside
-// "fresh"/"stale" so the set stays closed — every value the wire actually
-// carries — rather than silently rejecting real, correct output. Every other
-// enum below is unconditionally assigned one of its named constants by every
-// producer in the chatwright runtime (verified by reading each call site
-// before the split, not assumed), so none of them need the same treatment.
+// Three enums carry a Go zero value ("") that is itself a real, meaningful
+// wire value, not an unset placeholder to reject — each lists "" alongside
+// its named constants so the set stays closed (every value the wire
+// actually carries) rather than silently rejecting real, correct output:
+//
+//   - sdk.Verdict: ValidationOutcome.Verdict is documented as "meaningless
+//     when Checked is false", and the runtime's loop leaves it at "" in
+//     exactly that case (see the golden bundle's own "verdict": "").
+//   - sdk.ProposalKind and sdk.ActionOutcomeKind: LoopEvent.Proposal and
+//     LoopEvent.Action are plain (non-pointer) structs, always present on
+//     the wire, so they cannot simply be omitted when
+//     LoopEvent.ProposeError is set — a Propose call that failed before it
+//     ever produced a proposal (see LoopEvent.ProposeError's doc comment).
+//     The runtime's loop leaves both their Kind fields at "" in exactly
+//     that case (see the golden bundle's own second LoopEvent).
+//
+// Every other enum below is unconditionally assigned one of its named
+// constants by every producer in the chatwright runtime (verified by
+// reading each call site before the split, not assumed), so none of them
+// need the same treatment.
 func enumMapper(t reflect.Type) *jsonschema.Schema {
 	switch t {
 	case reflect.TypeOf(sdk.Direction("")):
@@ -222,9 +232,9 @@ func enumMapper(t reflect.Type) *jsonschema.Schema {
 	case reflect.TypeOf(sdk.ChangeKind("")):
 		return enumSchema(sdk.ChangeNewMessage, sdk.ChangeMessageEdited, sdk.ChangeActionsChanged)
 	case reflect.TypeOf(sdk.ProposalKind("")):
-		return enumSchema(sdk.ProposeSendText, sdk.ProposeClick, sdk.ProposeTaskDone, sdk.ProposeGiveUp)
+		return enumSchema(sdk.ProposalKind(""), sdk.ProposeSendText, sdk.ProposeClick, sdk.ProposeTaskDone, sdk.ProposeGiveUp)
 	case reflect.TypeOf(sdk.ActionOutcomeKind("")):
-		return enumSchema(sdk.ActionSkippedInvalid, sdk.ActionExecuted, sdk.ActionExecutedNoEffect,
+		return enumSchema(sdk.ActionOutcomeKind(""), sdk.ActionSkippedInvalid, sdk.ActionExecuted, sdk.ActionExecutedNoEffect,
 			sdk.ActionResolutionFailed, sdk.ActionTaskCompleted, sdk.ActionTaskGivenUp)
 	default:
 		return nil

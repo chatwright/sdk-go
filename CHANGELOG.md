@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- `LoopEvent` gained an additive, optional `proposeError` field (`omitempty`
+  string): set exactly when a provider's `Propose` call failed before it
+  ever produced a proposal, so a failed call can still leave a `LoopEvent`
+  behind (index, timestamp, task, observation sequence) instead of
+  vanishing from the record — the wire side of fixing
+  [chatwright/runtime-go#4](https://github.com/chatwright/runtime-go/issues/4).
+  `Proposal`/`Usage`/`Validation`/`Action` stay their (already-existing)
+  zero value in that case, so `ProposalKind` and `ActionOutcomeKind` — both
+  previously assumed to always carry one of their named constants — now
+  also list their Go zero value (`""`) in the schema's closed enum, the
+  same treatment `Verdict` already had for "meaningless when Checked is
+  false". `formats/run-bundle/v1/schema.json` regenerated accordingly
+  (purely additive: one new optional property, two enums widened by one
+  value each); `testdata/bundle_golden.json` extended with a third
+  `LoopEvent` exercising `proposeError`.
+
 ## 0.1.0
 
 Initial extraction from
