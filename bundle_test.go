@@ -33,7 +33,17 @@ func goldenBundle() sdk.Bundle {
 			Action:   sdk.ActionOutcome{Kind: sdk.ActionExecuted},
 		},
 		{
+			// A Propose call that failed before it ever became a proposal —
+			// LoopEvent.ProposeError, no Proposal/Usage/Validation/Action.
+			// Exercises the field the run-bundle format v1 gained for
+			// github.com/chatwright/runtime-go issue #4: a failed Propose
+			// call now leaves a LoopEvent behind instead of vanishing from
+			// the record.
 			Index: 1, At: fixedAt.Add(time.Second), TaskID: "onboarding", ObservationSequence: 2,
+			ProposeError: "actor/anthropic: request failed: context deadline exceeded",
+		},
+		{
+			Index: 2, At: fixedAt.Add(2 * time.Second), TaskID: "onboarding", ObservationSequence: 2,
 			Proposal: sdk.Proposal{Kind: sdk.ProposeTaskDone, Rationale: "onboarding confirmed"},
 			Action:   sdk.ActionOutcome{Kind: sdk.ActionTaskCompleted},
 		},

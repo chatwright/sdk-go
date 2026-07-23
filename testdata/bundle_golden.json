@@ -179,6 +179,35 @@
                 "taskId": "onboarding",
                 "observationSequence": 2,
                 "proposal": {
+                  "kind": "",
+                  "text": "",
+                  "actionId": "",
+                  "observationSequence": 0,
+                  "rationale": ""
+                },
+                "usage": {
+                  "model": "",
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "latencyNanoseconds": 0
+                },
+                "validation": {
+                  "checked": false,
+                  "verdict": "",
+                  "reason": ""
+                },
+                "action": {
+                  "kind": "",
+                  "detail": ""
+                },
+                "proposeError": "actor/anthropic: request failed: context deadline exceeded"
+              },
+              {
+                "index": 2,
+                "at": "2026-07-22T12:00:02Z",
+                "taskId": "onboarding",
+                "observationSequence": 2,
+                "proposal": {
                   "kind": "task-done",
                   "text": "",
                   "actionId": "",

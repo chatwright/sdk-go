@@ -7,6 +7,7 @@
         "kind": {
           "type": "string",
           "enum": [
+            "",
             "skipped-invalid",
             "executed",
             "executed-no-effect",
@@ -52,6 +53,9 @@
         },
         "action": {
           "$ref": "#/$defs/ActorActionOutcome"
+        },
+        "proposeError": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -72,6 +76,7 @@
         "kind": {
           "type": "string",
           "enum": [
+            "",
             "send-text",
             "click",
             "task-done",
