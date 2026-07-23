@@ -301,7 +301,7 @@ func applyNullablePatches(schema *jsonschema.Schema) error {
 // marshals as JSON null instead of its type's normal form.
 func isNilable(t reflect.Type) bool {
 	switch t.Kind() {
-	case reflect.Slice, reflect.Map, reflect.Ptr, reflect.Interface:
+	case reflect.Slice, reflect.Map, reflect.Pointer, reflect.Interface:
 		return true
 	default:
 		return false
@@ -348,7 +348,7 @@ func walkStructs(root reflect.Type, visit func(reflect.Type)) {
 	var walk func(t reflect.Type)
 	walk = func(t reflect.Type) {
 		switch t.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			walk(t.Elem())
 		case reflect.Slice, reflect.Array:
 			walk(t.Elem())

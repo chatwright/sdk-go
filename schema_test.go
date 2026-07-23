@@ -32,7 +32,7 @@ func validateBundleFile(t *testing.T, schema *jsonschema.Schema, path string) {
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	inst, err := jsonschema.UnmarshalJSON(f)
 	if err != nil {
