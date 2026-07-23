@@ -1,38 +1,38 @@
 // Package schemagen generates the run-bundle format v1's JSON Schema
-// (formats/run-bundle/v1/schema.json) from this module's own Go types, via
-// reflection (github.com/invopop/jsonschema), so the Go types stay the
+// (formats/run-bundle/v1/schema.json) from the sdk package's own Go types,
+// via reflection (github.com/invopop/jsonschema), so the Go types stay the
 // format's single source of truth — nobody hand-maintains a second
 // description of the wire shape that can drift from it.
 //
 // Plain reflection is not quite faithful to this module's actual encoding,
 // for two documented reasons Generate corrects:
 //
-//   - Type-name collisions: more than one package in this module declares a
-//     type with the same short name (observe.Actor, the message-side enum,
-//     vs bundle.Actor, the roster entry; datastate.Evidence vs
-//     campaign.Evidence). Reflected naively, the second definition silently
-//     overwrites the first in the schema's $defs, and every existing $ref to
-//     the clobbered type quietly points at the wrong shape instead.
-//     qualifiedTypeName (via Reflector.Namer) disambiguates every $defs key
-//     by package so this cannot happen.
+//   - $defs key stability: the published schema's $defs keys were minted
+//     when the wire types lived across several runtime packages
+//     (platform.JournalEntry -> "PlatformJournalEntry", campaign.Evidence ->
+//     "CampaignEvidence", ...). Now that every wire type lives in the single
+//     sdk package, reflecting names naively would mint different keys and
+//     silently change the published schema. defsName (via Reflector.Namer)
+//     pins every $defs key to its published value through an explicit table,
+//     and panics on any named struct/map type the table does not know — so
+//     an accidental new type can never silently join the wire.
 //   - Nullable non-omitempty slices, maps and pointers: every exported field
-//     reaching bundle JSON (goal.Goal, platform.JournalEntry,
-//     observe.Observation, datastate.Evidence, ...) carries an explicit
-//     lower-camel-case `json` tag — the whole run-bundle wire is uniformly
-//     camelCase — but most of those tags carry no `omitempty` option, so
-//     encoding/json's default behaviour still applies to presence: a nil
-//     slice, map or pointer field with no `omitempty` marshals as JSON null,
-//     not as that field's "empty" form ([], {} or an absent property). This
-//     is the everyday, common case (e.g. any goal.Task with no DependsOn),
-//     not a corner case, and it shows up throughout the golden bundle
-//     ("actions": null, "changes": null, ...). invopop/jsonschema has no
-//     notion of this at all — a plain reflected schema types every one of
-//     these fields as a bare "array"/"object", which would reject a huge
-//     share of bundles this module's own code legitimately produces.
-//     applyNullablePatches walks the real Go type graph reachable from
-//     bundle.Bundle (mirroring encoding/json's own tag rules, now reading
-//     each field's tagged name rather than falling back to its exported Go
-//     name) and widens every such field to also accept null.
+//     reaching bundle JSON (Goal, JournalEntry, Observation,
+//     DataStateEvidence, ...) carries an explicit lower-camel-case `json`
+//     tag — the whole run-bundle wire is uniformly camelCase — but most of
+//     those tags carry no `omitempty` option, so encoding/json's default
+//     behaviour still applies to presence: a nil slice, map or pointer field
+//     with no `omitempty` marshals as JSON null, not as that field's "empty"
+//     form ([], {} or an absent property). This is the everyday, common case
+//     (e.g. any Task with no DependsOn), not a corner case, and it shows up
+//     throughout the golden bundle ("actions": null, "changes": null, ...).
+//     invopop/jsonschema has no notion of this at all — a plain reflected
+//     schema types every one of these fields as a bare "array"/"object",
+//     which would reject a huge share of bundles the runtime's own code
+//     legitimately produces. applyNullablePatches walks the real Go type
+//     graph reachable from sdk.Bundle (mirroring encoding/json's own tag
+//     rules, reading each field's tagged name rather than falling back to
+//     its exported Go name) and widens every such field to also accept null.
 //
 // See Generate.
 package schemagen
@@ -47,14 +47,11 @@ import (
 	"github.com/invopop/jsonschema"
 	orderedmap "github.com/pb33f/ordered-map/v2"
 
-	"github.com/chatwright/chatwright/actor"
-	"github.com/chatwright/chatwright/bundle"
-	"github.com/chatwright/chatwright/observe"
-	"github.com/chatwright/chatwright/platform"
+	sdk "chatwright.dev/sdk"
 )
 
 // SchemaID is the run-bundle format v1 JSON Schema's own "$id" — the
-// schema's stable, dereferenceable identity. Distinct from bundle.FormatV1
+// schema's stable, dereferenceable identity. Distinct from sdk.FormatV1
 // (the Bundle document's own "format" field): SchemaID names the schema
 // document itself, FormatV1 names the wire shape a Bundle instance claims to
 // follow.
@@ -64,6 +61,9 @@ const SchemaID = "https://chatwright.dev/formats/run-bundle/v1/schema.json"
 // author-facing (not consumer-validated) note stating, in one place, how
 // this schema treats the two kinds of "openness" a run-bundle consumer needs
 // to know about up front — see the package doc comment for the reasoning.
+// The enum list below names the wire's historical enum names ("Actor" is
+// sdk's MessageActor); the text is part of the published schema's bytes and
+// never tracks a Go-side rename.
 const posture = `Enum-constrained string fields reflected from this module's Go string-const ` +
 	`enums (Direction, JournalEntryKind, Verdict, Actor, ChangeKind, ProposalKind, ` +
 	`ActionOutcomeKind) are closed: schema validation rejects any value outside the listed ` +
@@ -77,15 +77,15 @@ const posture = `Enum-constrained string fields reflected from this module's Go 
 	`schema describes today's shape, not a compatibility promise for tomorrow's.`
 
 // Generate builds the run-bundle format v1 JSON Schema (draft 2020-12) from
-// bundle.Bundle's Go types. See the package doc comment for the two
-// documented corrections applied on top of plain reflection.
+// sdk.Bundle's Go types. See the package doc comment for the two documented
+// corrections applied on top of plain reflection.
 func Generate() (*jsonschema.Schema, error) {
 	r := &jsonschema.Reflector{
-		Namer:          qualifiedTypeName,
+		Namer:          defsName,
 		Mapper:         enumMapper,
 		ExpandedStruct: true,
 	}
-	schema := r.Reflect(&bundle.Bundle{})
+	schema := r.Reflect(&sdk.Bundle{})
 	schema.ID = jsonschema.ID(SchemaID)
 	schema.Comments = posture
 
@@ -96,9 +96,9 @@ func Generate() (*jsonschema.Schema, error) {
 }
 
 // Marshal renders schema as indented JSON terminated by a trailing newline —
-// the same convention bundle.Write and actor.Cassette.Save use for their own
-// checked-in/produced JSON, so the committed schema file is reviewable in a
-// PR diff like any other artefact in this repository.
+// the same convention sdk.Write uses for the JSON it produces, so the
+// committed schema file is reviewable in a PR diff like any other artefact
+// in this repository.
 func Marshal(schema *jsonschema.Schema) ([]byte, error) {
 	data, err := json.MarshalIndent(schema, "", "  ")
 	if err != nil {
@@ -107,39 +107,87 @@ func Marshal(schema *jsonschema.Schema) ([]byte, error) {
 	return append(data, '\n'), nil
 }
 
-// qualifiedTypeName disambiguates $defs keys by package: reflected naively,
-// two same-named types in different packages (observe.Actor vs bundle.Actor,
-// datastate.Evidence vs campaign.Evidence) collide in a single, unqualified
-// $defs map — see the package doc comment.
-func qualifiedTypeName(t reflect.Type) string {
-	pkg := t.PkgPath()
-	if pkg == "" {
-		return t.Name()
-	}
-	parts := strings.Split(pkg, "/")
-	short := parts[len(parts)-1]
-	return capitalize(short) + t.Name()
+// defsKeys pins every type the reflector places in the schema's $defs to its
+// published key. The keys were minted by the pre-split generator from each
+// type's then-package (platform, goal, actor, observe, campaign, datastate,
+// bundle) and are frozen wire artefacts now — a Go-side rename (MessageActor,
+// FindingEvidence, DataStateEvidence) never moves them. sdk.Bundle itself is
+// listed for completeness: ExpandedStruct promotes its definition to the
+// schema root, so "Bundle" never appears as a $defs key in the output.
+var defsKeys = map[reflect.Type]string{
+	reflect.TypeOf(sdk.Bundle{}):              "Bundle",
+	reflect.TypeOf(sdk.Metadata{}):            "BundleMetadata",
+	reflect.TypeOf(sdk.Author{}):              "BundleAuthor",
+	reflect.TypeOf(sdk.Run{}):                 "BundleRun",
+	reflect.TypeOf(sdk.Actor{}):               "BundleActor",
+	reflect.TypeOf(sdk.ActorProvider{}):       "BundleActorProvider",
+	reflect.TypeOf(sdk.PlatformIdentity{}):    "BundlePlatformIdentity",
+	reflect.TypeOf(sdk.ChatJournal{}):         "BundleChatJournal",
+	reflect.TypeOf(sdk.Part{}):                "BundlePart",
+	reflect.TypeOf(sdk.JournalBoundary{}):     "BundleJournalBoundary",
+	reflect.TypeOf(sdk.ChatBoundary{}):        "BundleChatBoundary",
+	reflect.TypeOf(sdk.AIGoalSection{}):       "BundleAIGoalSection",
+	reflect.TypeOf(sdk.RetainedObservation{}): "BundleRetainedObservation",
+	reflect.TypeOf(sdk.Bookmark{}):            "BundleBookmark",
+	reflect.TypeOf(sdk.Annotation{}):          "BundleAnnotation",
+	reflect.TypeOf(sdk.Anchor{}):              "BundleAnchor",
+	reflect.TypeOf(sdk.JournalEntry{}):        "PlatformJournalEntry",
+	reflect.TypeOf(sdk.Action{}):              "PlatformAction",
+	reflect.TypeOf(sdk.Goal{}):                "GoalGoal",
+	reflect.TypeOf(sdk.Task{}):                "GoalTask",
+	reflect.TypeOf(sdk.Budgets{}):             "GoalBudgets",
+	reflect.TypeOf(sdk.LoopEvent{}):           "ActorLoopEvent",
+	reflect.TypeOf(sdk.Proposal{}):            "ActorProposal",
+	reflect.TypeOf(sdk.Usage{}):               "ActorUsage",
+	reflect.TypeOf(sdk.ValidationOutcome{}):   "ActorValidationOutcome",
+	reflect.TypeOf(sdk.ActionOutcome{}):       "ActorActionOutcome",
+	reflect.TypeOf(sdk.Observation{}):         "ObserveObservation",
+	reflect.TypeOf(sdk.VisibleMessage{}):      "ObserveVisibleMessage",
+	reflect.TypeOf(sdk.AvailableAction{}):     "ObserveAvailableAction",
+	reflect.TypeOf(sdk.Change{}):              "ObserveChange",
+	reflect.TypeOf(sdk.ChatRef{}):             "ObserveChatRef",
+	reflect.TypeOf(sdk.Report{}):              "CampaignReport",
+	reflect.TypeOf(sdk.TaskOutcome{}):         "CampaignTaskOutcome",
+	reflect.TypeOf(sdk.Finding{}):             "CampaignFinding",
+	reflect.TypeOf(sdk.FindingEvidence{}):     "CampaignEvidence",
+	reflect.TypeOf(sdk.AggregateUsage{}):      "CampaignAggregateUsage",
+	reflect.TypeOf(sdk.DataStateEvidence{}):   "DatastateEvidence",
+	reflect.TypeOf(sdk.Row{}):                 "DatastateRow",
 }
 
-// capitalize upper-cases s's first byte — package names in this module are
-// plain ASCII lower-case identifiers, so a byte-wise operation is sufficient
-// (no need for the unicode-aware machinery strings.Title's replacement,
-// cases.Title, would pull in).
-func capitalize(s string) string {
-	if s == "" {
-		return s
+// defsName is the Reflector.Namer: it returns t's pinned $defs key from
+// defsKeys, and panics on any named struct, map, slice or array type the
+// table does not know — those are exactly the kinds invopop/jsonschema
+// registers as $defs entries, so an unlisted one would mint a brand-new,
+// unreviewed key in the published schema. Everything else the reflector asks
+// about but never registers — predeclared kinds (string, int64, ...), named
+// string enums (closed inline by enumMapper), unnamed composites, and
+// time.Time/time.Duration (reflected as leaf "date-time"/integer schemas) —
+// falls through to the empty string, which the reflector resolves to
+// t.Name() without ever creating a definition.
+func defsName(t reflect.Type) string {
+	if name, ok := defsKeys[t]; ok {
+		return name
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	if t == reflect.TypeOf(time.Time{}) {
+		return "" // leaf: reflected as a "date-time" string, never a $defs entry
+	}
+	switch t.Kind() {
+	case reflect.Struct, reflect.Map, reflect.Slice, reflect.Array:
+		if t.Name() != "" {
+			panic(fmt.Sprintf("schemagen: type %s has no pinned $defs key — a new wire type must be added to defsKeys deliberately, never named by accident", t))
+		}
+	}
+	return ""
 }
 
 // enumMapper returns a closed, enum-constrained string schema for each of
-// this module's exported string-const enum types that actually appears
-// somewhere in Bundle's wire shape (see AGENTS.md's "JSON artefacts carry
-// human-readable string constants" convention; the closed-enum posture
-// itself is documented once, at the schema's top level — see posture).
-// actor.Mode is deliberately absent: it selects a CassetteProvider's
-// record/replay behaviour and never appears on a Bundle. Returning nil for
-// every other type defers to the reflector's own default handling.
+// the sdk package's exported string-const enum types that actually appears
+// somewhere in Bundle's wire shape (see the Chatwright standard's "JSON
+// artefacts carry human-readable string constants" convention; the
+// closed-enum posture itself is documented once, at the schema's top level —
+// see posture). Returning nil for every other type defers to the reflector's
+// own default handling.
 //
 // A per-field Description is deliberately not attached here: invopop/
 // jsonschema's field handling (structKeywordsFromTags) unconditionally
@@ -147,37 +195,37 @@ func capitalize(s string) string {
 // `jsonschema_description` struct tag after this Mapper runs, so anything
 // set here would be silently discarded — see reflect.go's handleField. Using
 // that tag instead would mean adding jsonschema-only struct tags (distinct
-// from the `json` tags platform/observe/actor's domain types already carry
-// for wire-casing) to those types purely for schema cosmetics, which this
-// generator deliberately avoids.
+// from the `json` tags the wire types already carry for wire-casing) to
+// those types purely for schema cosmetics, which this generator deliberately
+// avoids.
 //
-// observe.Verdict is the one enum whose Go zero value ("") is itself a real,
-// meaningful wire value, not an unset placeholder to reject: actor.
+// sdk.Verdict is the one enum whose Go zero value ("") is itself a real,
+// meaningful wire value, not an unset placeholder to reject:
 // ValidationOutcome.Verdict is documented as "meaningless when Checked is
-// false", and the loop leaves it at "" in exactly that case (see the golden
-// bundle's own "verdict": ""). Its enum lists "" alongside "fresh"/"stale"
-// so the set stays closed — every value the wire actually carries — rather
-// than silently rejecting real, correct output. Every other enum below is
-// unconditionally assigned one of its named constants by every producer in
-// this module (verified by reading each call site, not assumed), so none of
-// them need the same treatment.
+// false", and the runtime's loop leaves it at "" in exactly that case (see
+// the golden bundle's own "verdict": ""). Its enum lists "" alongside
+// "fresh"/"stale" so the set stays closed — every value the wire actually
+// carries — rather than silently rejecting real, correct output. Every other
+// enum below is unconditionally assigned one of its named constants by every
+// producer in the chatwright runtime (verified by reading each call site
+// before the split, not assumed), so none of them need the same treatment.
 func enumMapper(t reflect.Type) *jsonschema.Schema {
 	switch t {
-	case reflect.TypeOf(platform.Direction("")):
-		return enumSchema(platform.DirectionUser, platform.DirectionBot)
-	case reflect.TypeOf(platform.JournalEntryKind("")):
-		return enumSchema(platform.JournalEntryMessage, platform.JournalEntryAction, platform.JournalEntryUncaptured)
-	case reflect.TypeOf(observe.Verdict("")):
-		return enumSchema(observe.Verdict(""), observe.VerdictFresh, observe.VerdictStale)
-	case reflect.TypeOf(observe.Actor("")):
-		return enumSchema(observe.ActorUser, observe.ActorBot)
-	case reflect.TypeOf(observe.ChangeKind("")):
-		return enumSchema(observe.ChangeNewMessage, observe.ChangeMessageEdited, observe.ChangeActionsChanged)
-	case reflect.TypeOf(actor.ProposalKind("")):
-		return enumSchema(actor.ProposeSendText, actor.ProposeClick, actor.ProposeTaskDone, actor.ProposeGiveUp)
-	case reflect.TypeOf(actor.ActionOutcomeKind("")):
-		return enumSchema(actor.ActionSkippedInvalid, actor.ActionExecuted, actor.ActionExecutedNoEffect,
-			actor.ActionResolutionFailed, actor.ActionTaskCompleted, actor.ActionTaskGivenUp)
+	case reflect.TypeOf(sdk.Direction("")):
+		return enumSchema(sdk.DirectionUser, sdk.DirectionBot)
+	case reflect.TypeOf(sdk.JournalEntryKind("")):
+		return enumSchema(sdk.JournalEntryMessage, sdk.JournalEntryAction, sdk.JournalEntryUncaptured)
+	case reflect.TypeOf(sdk.Verdict("")):
+		return enumSchema(sdk.Verdict(""), sdk.VerdictFresh, sdk.VerdictStale)
+	case reflect.TypeOf(sdk.MessageActor("")):
+		return enumSchema(sdk.MessageActorUser, sdk.MessageActorBot)
+	case reflect.TypeOf(sdk.ChangeKind("")):
+		return enumSchema(sdk.ChangeNewMessage, sdk.ChangeMessageEdited, sdk.ChangeActionsChanged)
+	case reflect.TypeOf(sdk.ProposalKind("")):
+		return enumSchema(sdk.ProposeSendText, sdk.ProposeClick, sdk.ProposeTaskDone, sdk.ProposeGiveUp)
+	case reflect.TypeOf(sdk.ActionOutcomeKind("")):
+		return enumSchema(sdk.ActionSkippedInvalid, sdk.ActionExecuted, sdk.ActionExecutedNoEffect,
+			sdk.ActionResolutionFailed, sdk.ActionTaskCompleted, sdk.ActionTaskGivenUp)
 	default:
 		return nil
 	}
@@ -195,26 +243,26 @@ func enumSchema[T ~string](values ...T) *jsonschema.Schema {
 
 // applyNullablePatches widens every field this module's real encoding can
 // emit as JSON null — a non-`omitempty` slice, map or pointer field left
-// nil — so its schema also accepts null, matching bundle.Write's actual
-// output instead of a bare reflected type. See the package doc comment's
-// second bullet. Left uncorrected, TestGoldenBundleValidatesAgainstSchema
-// would fail: schema validation would reject the golden bundle's own literal
+// nil — so its schema also accepts null, matching sdk.Write's actual output
+// instead of a bare reflected type. See the package doc comment's second
+// bullet. Left uncorrected, TestGoldenBundleValidatesAgainstSchema would
+// fail: schema validation would reject the golden bundle's own literal
 // nulls (e.g. "actions": null, "changes": null).
 //
-// It walks the real Go type graph reachable from bundle.Bundle (the same
-// graph the reflector itself walked to build schema), deriving each field's
-// JSON name/omitempty exactly as encoding/json (and invopop/jsonschema,
-// which reads the same `json` tag) would, and wraps the already-reflected
-// property schema as {oneOf: [<original>, {type: null}]} — the identical
-// idiom invopop/jsonschema uses internally for its own `jsonschema:"nullable"`
+// It walks the real Go type graph reachable from sdk.Bundle (the same graph
+// the reflector itself walked to build schema), deriving each field's JSON
+// name/omitempty exactly as encoding/json (and invopop/jsonschema, which
+// reads the same `json` tag) would, and wraps the already-reflected property
+// schema as {oneOf: [<original>, {type: null}]} — the identical idiom
+// invopop/jsonschema uses internally for its own `jsonschema:"nullable"`
 // tag, so a nullable field here renders no differently than the library's
 // own native mechanism would.
 func applyNullablePatches(schema *jsonschema.Schema) error {
-	rootName := qualifiedTypeName(reflect.TypeOf(bundle.Bundle{}))
+	rootName := defsName(reflect.TypeOf(sdk.Bundle{}))
 
 	var walkErr error
-	walkStructs(reflect.TypeOf(bundle.Bundle{}), func(t reflect.Type) {
-		defName := qualifiedTypeName(t)
+	walkStructs(reflect.TypeOf(sdk.Bundle{}), func(t reflect.Type) {
+		defName := defsName(t)
 		var props *orderedmap.OrderedMap[string, *jsonschema.Schema]
 		if defName == rootName {
 			props = schema.Properties

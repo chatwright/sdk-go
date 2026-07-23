@@ -1,4 +1,4 @@
-package bundle_test
+package sdk_test
 
 import (
 	"os"
@@ -6,15 +6,15 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/chatwright/chatwright/internal/schemagen"
+	"chatwright.dev/sdk/internal/schemagen"
 )
 
-// schemaPath is repository-root-relative to this package (bundle/) — the
-// committed schema internal/schemagen/gen writes and this file gates.
-const schemaPath = "../formats/run-bundle/v1/schema.json"
+// schemaPath is repository-root-relative (this package IS the module root) —
+// the committed schema internal/schemagen/gen writes and this file gates.
+const schemaPath = "formats/run-bundle/v1/schema.json"
 
 // compileSchema compiles the committed schema file, shared by every test in
-// this file (and bundle_e2e_test.go) that validates a Bundle against it.
+// this file that validates a Bundle against it.
 func compileSchema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
 	sch, err := jsonschema.NewCompiler().Compile(schemaPath)
@@ -48,8 +48,9 @@ func validateBundleFile(t *testing.T, schema *jsonschema.Schema, path string) {
 // package's own Write produces — see bundle.go's package doc comment for how
 // the schema is generated and gated. The e2e counterpart to this test —
 // validating a Bundle produced by a real campaign run, not a hand-built
-// fixture — lives in bundle_e2e_test.go's
-// TestScriptedCampaignBundleAgainstGreetbotEndToEnd.
+// fixture — lives in the chatwright runtime repository
+// (github.com/chatwright/chatwright), which produces bundles with these
+// types.
 func TestGoldenBundleValidatesAgainstSchema(t *testing.T) {
 	validateBundleFile(t, compileSchema(t), "testdata/bundle_golden.json")
 }
@@ -59,7 +60,7 @@ func TestGoldenBundleValidatesAgainstSchema(t *testing.T) {
 // comparison uses: regenerating the schema from today's Go types must
 // byte-for-byte match the committed file, so an undeclared type change is
 // caught by a test diff rather than a stale schema silently shipping.
-// Regenerate with `go generate ./bundle/...` (or, equivalently,
+// Regenerate with `go generate .` (or, equivalently,
 // `go run ./internal/schemagen/gen` from the repository root) and commit
 // the result when a change is deliberate.
 func TestSchemaRegenerationMatchesCommittedFile(t *testing.T) {
@@ -78,6 +79,6 @@ func TestSchemaRegenerationMatchesCommittedFile(t *testing.T) {
 	}
 	if string(got) != string(committed) {
 		t.Fatalf("%s is out of date relative to the Go types it is generated from — "+
-			"run `go generate ./bundle/...` and commit the result", schemaPath)
+			"run `go generate .` and commit the result", schemaPath)
 	}
 }

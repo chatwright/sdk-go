@@ -1,4 +1,4 @@
-package bundle_test
+package sdk_test
 
 import (
 	"bytes"
@@ -9,13 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chatwright/chatwright/actor"
-	"github.com/chatwright/chatwright/bundle"
-	"github.com/chatwright/chatwright/campaign"
-	"github.com/chatwright/chatwright/datastate"
-	"github.com/chatwright/chatwright/goal"
-	"github.com/chatwright/chatwright/observe"
-	"github.com/chatwright/chatwright/platform"
+	sdk "chatwright.dev/sdk"
 )
 
 // goldenBundle builds a small, fully deterministic Bundle exercising every
@@ -23,144 +17,164 @@ import (
 // round-trip and golden-file comparison. Every timestamp is built from
 // time.Date, never time.Now, so it carries no monotonic reading and
 // round-trips through JSON (which discards monotonic readings anyway) with
-// full reflect.DeepEqual fidelity, not just byte-identical re-encoding.
-func goldenBundle() bundle.Bundle {
+// full reflect.DeepEqual fidelity, not just byte-identical re-encoding. The
+// Report is constructed by hand to the exact value the runtime's campaign
+// assembly produced for this fixture before the split — the golden file is
+// the byte-for-byte authority either way.
+func goldenBundle() sdk.Bundle {
 	fixedAt := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
 	cost := 0.3
 
-	events := []actor.LoopEvent{
+	events := []sdk.LoopEvent{
 		{
 			Index: 0, At: fixedAt, TaskID: "onboarding", ObservationSequence: 1,
-			Proposal: actor.Proposal{Kind: actor.ProposeSendText, Text: "Hi", Rationale: "start the conversation"},
-			Usage:    actor.Usage{Model: "claude-haiku-4-5", InputTokens: 5, OutputTokens: 2, Cost: &cost},
-			Action:   actor.ActionOutcome{Kind: actor.ActionExecuted},
+			Proposal: sdk.Proposal{Kind: sdk.ProposeSendText, Text: "Hi", Rationale: "start the conversation"},
+			Usage:    sdk.Usage{Model: "claude-haiku-4-5", InputTokens: 5, OutputTokens: 2, Cost: &cost},
+			Action:   sdk.ActionOutcome{Kind: sdk.ActionExecuted},
 		},
 		{
 			Index: 1, At: fixedAt.Add(time.Second), TaskID: "onboarding", ObservationSequence: 2,
-			Proposal: actor.Proposal{Kind: actor.ProposeTaskDone, Rationale: "onboarding confirmed"},
-			Action:   actor.ActionOutcome{Kind: actor.ActionTaskCompleted},
+			Proposal: sdk.Proposal{Kind: sdk.ProposeTaskDone, Rationale: "onboarding confirmed"},
+			Action:   sdk.ActionOutcome{Kind: sdk.ActionTaskCompleted},
 		},
 	}
-	g := goal.Goal{ID: "listus", Title: "Exercise onboarding", Tasks: []goal.Task{
+	g := sdk.Goal{ID: "listus", Title: "Exercise onboarding", Tasks: []sdk.Task{
 		{ID: "onboarding", Title: "Complete onboarding", SuccessCriteria: "user completes language selection"},
 	}}
-	snapshot := goal.CampaignSnapshot{
-		GoalID:     "listus",
-		Statuses:   map[string]goal.TaskStatus{"onboarding": goal.TaskCompleted},
-		Steps:      2,
-		Cost:       0.3,
-		Stopped:    true,
-		StopReason: goal.StopGoalComplete,
+	report := sdk.Report{
+		SchemaVersion: sdk.ReportSchemaVersion,
+		GoalID:        "listus",
+		GoalTitle:     "Exercise onboarding",
+		StopReason:    "goal-complete",
+		Steps:         2,
+		Cost:          0.3,
+		Tasks: []sdk.TaskOutcome{
+			{
+				TaskID: "onboarding", Title: "Complete onboarding",
+				SuccessCriteria: "user completes language selection",
+				Status:          "completed", Attempted: true,
+			},
+		},
+		Findings: []sdk.Finding{},
+		Usage:    sdk.AggregateUsage{InputTokens: 5, OutputTokens: 2, Cost: 0.3, CallCount: 2},
 	}
-	report := campaign.Assemble(campaign.AssembleInput{Goal: g, Campaign: snapshot, Events: events})
 
-	chats := []bundle.ChatJournal{
+	chats := []sdk.ChatJournal{
 		{
 			ChatID: 42,
-			Entries: []platform.JournalEntry{
-				{Direction: platform.DirectionUser, Kind: platform.JournalEntryMessage, MessageID: 1, Text: "Hi", At: fixedAt, FromID: 7},
+			Entries: []sdk.JournalEntry{
+				{Direction: sdk.DirectionUser, Kind: sdk.JournalEntryMessage, MessageID: 1, Text: "Hi", At: fixedAt, FromID: 7},
 				{
-					Direction: platform.DirectionBot, Kind: platform.JournalEntryMessage, MessageID: 2, Text: "Choose your language:",
-					Actions: [][]platform.Action{{{Label: "English", ID: "act1"}}}, At: fixedAt.Add(time.Second), FromID: 1,
+					Direction: sdk.DirectionBot, Kind: sdk.JournalEntryMessage, MessageID: 2, Text: "Choose your language:",
+					Actions: [][]sdk.Action{{{Label: "English", ID: "act1"}}}, At: fixedAt.Add(time.Second), FromID: 1,
 				},
-				{Direction: platform.DirectionUser, Kind: platform.JournalEntryAction, RefMessageID: 2, Text: "act1", At: fixedAt.Add(2 * time.Second), FromID: 7},
-				{Direction: platform.DirectionBot, Kind: platform.JournalEntryMessage, MessageID: 2, Version: 1, Text: "Howdy stranger", At: fixedAt.Add(3 * time.Second), FromID: 1},
+				{Direction: sdk.DirectionUser, Kind: sdk.JournalEntryAction, RefMessageID: 2, Text: "act1", At: fixedAt.Add(2 * time.Second), FromID: 7},
+				{Direction: sdk.DirectionBot, Kind: sdk.JournalEntryMessage, MessageID: 2, Version: 1, Text: "Howdy stranger", At: fixedAt.Add(3 * time.Second), FromID: 1},
 			},
 		},
 	}
 
-	observations := []bundle.RetainedObservation{
+	observations := []sdk.RetainedObservation{
 		{
 			Sequence: 1,
-			Observation: observe.Observation{
-				Sequence: 1, Chat: observe.ChatRef{ChatID: 42},
-				Messages: []observe.VisibleMessage{{ID: "msg1", Actor: observe.ActorUser, Text: "Hi"}},
+			Observation: sdk.Observation{
+				Sequence: 1, Chat: sdk.ChatRef{ChatID: 42},
+				Messages: []sdk.VisibleMessage{{ID: "msg1", Actor: sdk.MessageActorUser, Text: "Hi"}},
 			},
 		},
 		{
 			Sequence: 2,
-			Observation: observe.Observation{
-				Sequence: 2, PreviousSequence: 1, Chat: observe.ChatRef{ChatID: 42},
-				Messages: []observe.VisibleMessage{
-					{ID: "msg1", Actor: observe.ActorUser, Text: "Hi"},
+			Observation: sdk.Observation{
+				Sequence: 2, PreviousSequence: 1, Chat: sdk.ChatRef{ChatID: 42},
+				Messages: []sdk.VisibleMessage{
+					{ID: "msg1", Actor: sdk.MessageActorUser, Text: "Hi"},
 					{
-						ID: "msg2", Actor: observe.ActorBot, Text: "Choose your language:",
-						Actions: []observe.AvailableAction{{ID: "act1", Label: "English", SeenAt: 2}},
+						ID: "msg2", Actor: sdk.MessageActorBot, Text: "Choose your language:",
+						Actions: []sdk.AvailableAction{{ID: "act1", Label: "English", SeenAt: 2}},
 					},
 				},
-				Changes: []observe.Change{{Kind: observe.ChangeNewMessage, MessageID: "msg2", Actor: observe.ActorBot}},
+				Changes: []sdk.Change{{Kind: sdk.ChangeNewMessage, MessageID: "msg2", Actor: sdk.MessageActorBot}},
 			},
 		},
 	}
 
-	evidence := []datastate.Evidence{
+	evidence := []sdk.DataStateEvidence{
 		{
-			Name: "onboarding-language", AttachmentPoint: datastate.AttachmentAfterMessage,
+			Name: "onboarding-language", AttachmentPoint: sdk.AttachmentAfterMessage,
 			Holder: "listusdb", Query: "SELECT language FROM users WHERE id = @userId",
 			Params:  map[string]any{"userId": "u1"},
-			Outcome: datastate.OutcomePassed, TotalRows: 1, ReturnedRows: 1,
-			Preview: []datastate.Row{{"language": "en"}},
+			Outcome: sdk.OutcomePassed, TotalRows: 1, ReturnedRows: 1,
+			Preview: []sdk.Row{{"language": "en"}},
 		},
 	}
 
-	actors := []bundle.Actor{
+	actors := []sdk.Actor{
 		{
-			ID: "explorer", Type: bundle.ActorAIAgent, Name: "Explorer",
-			PlatformIdentities: map[string]bundle.PlatformIdentity{
+			ID: "explorer", Type: sdk.ActorAIAgent, Name: "Explorer",
+			PlatformIdentities: map[string]sdk.PlatformIdentity{
 				"telegram": {UserID: 7, Username: "explorer_bot", FirstName: "Explorer"},
 			},
-			Provider: &bundle.ActorProvider{Name: "anthropic", ModelIDs: bundle.AggregateModelIDs(events)},
+			Provider: &sdk.ActorProvider{Name: "anthropic", ModelIDs: sdk.AggregateModelIDs(events)},
 		},
 		{
-			ID: "bot", Type: bundle.ActorBot, Name: "Greetbot",
-			PlatformIdentities: map[string]bundle.PlatformIdentity{
+			ID: "bot", Type: sdk.ActorBot, Name: "Greetbot",
+			PlatformIdentities: map[string]sdk.PlatformIdentity{
 				"telegram": {UserID: 1, FirstName: "ChatwrightBot"},
 			},
 		},
 	}
 
-	bookmarks := []bundle.Bookmark{
-		{ID: "language-picked", Title: "Language picked", Anchor: bundle.Anchor{ChatID: 42, EntryIndex: 2}},
+	bookmarks := []sdk.Bookmark{
+		{ID: "language-picked", Title: "Language picked", Anchor: sdk.Anchor{ChatID: 42, EntryIndex: 2}},
 	}
-	annotations := []bundle.Annotation{
+	annotations := []sdk.Annotation{
 		{
 			ID:        "note-1",
-			Anchor:    bundle.Anchor{ChatID: 42, EntryIndex: 3, MessageID: 2, Version: 1},
-			Author:    &bundle.Author{Name: "Ada Reviewer", Email: "ada@chatwright.dev"},
+			Anchor:    sdk.Anchor{ChatID: 42, EntryIndex: 3, MessageID: 2, Version: 1},
+			Author:    &sdk.Author{Name: "Ada Reviewer", Email: "ada@chatwright.dev"},
 			CreatedAt: fixedAt.Add(10 * time.Second),
 			Text:      "See how instead of $4 bot returned 4$",
 		},
 		{
 			ID:        "note-2",
-			Anchor:    bundle.Anchor{ChatID: 42, EntryIndex: 3, MessageID: 2, Version: 1},
-			Author:    &bundle.Author{Name: "Sam Maintainer", Email: "sam@chatwright.dev"},
+			Anchor:    sdk.Anchor{ChatID: 42, EntryIndex: 3, MessageID: 2, Version: 1},
+			Author:    &sdk.Author{Name: "Sam Maintainer", Email: "sam@chatwright.dev"},
 			CreatedAt: fixedAt.Add(20 * time.Second),
 			Text:      "Good catch — filed as a display bug.",
 			ReplyTo:   "note-1",
 		},
 	}
 
-	run := bundle.SingleAIGoalRun(bundle.SingleAIGoalRunInput{
-		RunID: "run-1", Platform: "telegram", EndpointProfile: bundle.EndpointProfilePlatformEmulated,
+	run := sdk.Run{
+		ID: "run-1", Platform: "telegram", EndpointProfile: sdk.EndpointProfilePlatformEmulated,
 		Actors: actors, Chats: chats,
-		PartID: "exploration", PartTitle: "Shopping-list exploration",
-		ActorID:      "explorer",
-		Goal:         g,
-		Events:       events,
-		Observations: observations,
-		Report:       report,
-		Evidence:     evidence,
-		Bookmarks:    bookmarks,
-		Annotations:  annotations,
-	})
-
-	return bundle.Bundle{
-		Format: bundle.FormatV1,
-		Metadata: bundle.Metadata{
-			CreatedAt: fixedAt,
-			Author:    &bundle.Author{Name: "Ada Reviewer", Email: "ada@chatwright.dev"},
+		Parts: []sdk.Part{
+			{
+				ID: "exploration", Title: "Shopping-list exploration", Kind: sdk.PartKindAIGoal,
+				JournalBoundary: sdk.JournalBoundary{Chats: []sdk.ChatBoundary{
+					{ChatID: 42, FirstEntry: 0, EntryCount: 4},
+				}},
+				AIGoal: &sdk.AIGoalSection{
+					Goal:         g,
+					ActorID:      "explorer",
+					Events:       events,
+					Observations: observations,
+					Report:       report,
+					Evidence:     evidence,
+				},
+			},
 		},
-		Runs: []bundle.Run{run},
+		Bookmarks:   bookmarks,
+		Annotations: annotations,
+	}
+
+	return sdk.Bundle{
+		Format: sdk.FormatV1,
+		Metadata: sdk.Metadata{
+			CreatedAt: fixedAt,
+			Author:    &sdk.Author{Name: "Ada Reviewer", Email: "ada@chatwright.dev"},
+		},
+		Runs: []sdk.Run{run},
 	}
 }
 
@@ -174,11 +188,11 @@ func TestBundleRoundTripIsDeterministic(t *testing.T) {
 	b := goldenBundle()
 
 	var first bytes.Buffer
-	if err := bundle.Write(&first, b); err != nil {
+	if err := sdk.Write(&first, b); err != nil {
 		t.Fatalf("Write() error = %v", err)
 	}
 
-	roundTripped, err := bundle.Read(bytes.NewReader(first.Bytes()))
+	roundTripped, err := sdk.Read(bytes.NewReader(first.Bytes()))
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
@@ -187,7 +201,7 @@ func TestBundleRoundTripIsDeterministic(t *testing.T) {
 	}
 
 	var second bytes.Buffer
-	if err := bundle.Write(&second, roundTripped); err != nil {
+	if err := sdk.Write(&second, roundTripped); err != nil {
 		t.Fatalf("Write(roundTripped) error = %v", err)
 	}
 	if first.String() != second.String() {
@@ -217,11 +231,11 @@ func TestBundleReadRejectsUnknownFormat(t *testing.T) {
 	}
 	for name, payload := range tests {
 		t.Run(name, func(t *testing.T) {
-			_, err := bundle.Read(strings.NewReader(payload))
+			_, err := sdk.Read(strings.NewReader(payload))
 			if err == nil {
 				t.Fatal("Read() error = nil, want an unknown-format error")
 			}
-			if !errors.Is(err, bundle.ErrUnknownBundleFormat) {
+			if !errors.Is(err, sdk.ErrUnknownBundleFormat) {
 				t.Fatalf("Read() error = %v, want it to wrap ErrUnknownBundleFormat", err)
 			}
 		})
@@ -240,11 +254,11 @@ func TestBundleReadRejectsUnknownPartKind(t *testing.T) {
 			"parts": [{"id": "mystery", "kind": "quantum-leap", "journalBoundary": {"chats": []}}]
 		}]
 	}`
-	_, err := bundle.Read(strings.NewReader(payload))
+	_, err := sdk.Read(strings.NewReader(payload))
 	if err == nil {
 		t.Fatal("Read() error = nil, want an unknown-part-kind error")
 	}
-	if !errors.Is(err, bundle.ErrUnknownPartKind) {
+	if !errors.Is(err, sdk.ErrUnknownPartKind) {
 		t.Fatalf("Read() error = %v, want it to wrap ErrUnknownPartKind", err)
 	}
 	if !strings.Contains(err.Error(), "quantum-leap") || !strings.Contains(err.Error(), "mystery") {
@@ -265,11 +279,11 @@ func TestBundleReadRejectsAIGoalPartMissingSection(t *testing.T) {
 			"parts": [{"id": "exploration", "kind": "ai-goal", "journalBoundary": {"chats": []}}]
 		}]
 	}`
-	_, err := bundle.Read(strings.NewReader(payload))
+	_, err := sdk.Read(strings.NewReader(payload))
 	if err == nil {
 		t.Fatal("Read() error = nil, want a missing-aiGoal-section error")
 	}
-	if !errors.Is(err, bundle.ErrMissingAIGoalSection) {
+	if !errors.Is(err, sdk.ErrMissingAIGoalSection) {
 		t.Fatalf("Read() error = %v, want it to wrap ErrMissingAIGoalSection", err)
 	}
 	if !strings.Contains(err.Error(), "exploration") {
@@ -290,11 +304,11 @@ func TestBundleReadAcceptsDeterministicPartWithNoSection(t *testing.T) {
 			"parts": [{"id": "onboarding", "kind": "deterministic", "journalBoundary": {"chats": []}}]
 		}]
 	}`
-	decoded, err := bundle.Read(strings.NewReader(payload))
+	decoded, err := sdk.Read(strings.NewReader(payload))
 	if err != nil {
 		t.Fatalf("Read() error = %v, want a reserved deterministic part to be accepted", err)
 	}
-	if len(decoded.Runs) != 1 || len(decoded.Runs[0].Parts) != 1 || decoded.Runs[0].Parts[0].Kind != bundle.PartKindDeterministic {
+	if len(decoded.Runs) != 1 || len(decoded.Runs[0].Parts) != 1 || decoded.Runs[0].Parts[0].Kind != sdk.PartKindDeterministic {
 		t.Fatalf("decoded = %+v, want one run with one deterministic part", decoded)
 	}
 }
@@ -324,7 +338,7 @@ func TestBundleReadToleratesDanglingAnnotationReferences(t *testing.T) {
 			]
 		}]
 	}`
-	decoded, err := bundle.Read(strings.NewReader(payload))
+	decoded, err := sdk.Read(strings.NewReader(payload))
 	if err != nil {
 		t.Fatalf("Read() error = %v, want a dangling replyTo/out-of-range anchor to be accepted", err)
 	}
@@ -338,9 +352,10 @@ func TestBundleReadToleratesDanglingAnnotationReferences(t *testing.T) {
 }
 
 // TestBundleContainsProfileAndPlatformLabels proves a Bundle's Run always
-// names — never implies — its endpoint profile and platform (AGENTS.md's
-// "fidelity is declared" principle applied to the run-bundle artifact), both
-// as struct fields and as readable keys in the encoded JSON a player parses.
+// names — never implies — its endpoint profile and platform (the Chatwright
+// standard's "fidelity is declared" principle applied to the run-bundle
+// artifact), both as struct fields and as readable keys in the encoded JSON
+// a player parses.
 func TestBundleContainsProfileAndPlatformLabels(t *testing.T) {
 	b := goldenBundle()
 
@@ -351,12 +366,12 @@ func TestBundleContainsProfileAndPlatformLabels(t *testing.T) {
 	if run.Platform != "telegram" {
 		t.Fatalf("run.Platform = %q, want %q", run.Platform, "telegram")
 	}
-	if run.EndpointProfile != bundle.EndpointProfilePlatformEmulated {
-		t.Fatalf("run.EndpointProfile = %q, want %q", run.EndpointProfile, bundle.EndpointProfilePlatformEmulated)
+	if run.EndpointProfile != sdk.EndpointProfilePlatformEmulated {
+		t.Fatalf("run.EndpointProfile = %q, want %q", run.EndpointProfile, sdk.EndpointProfilePlatformEmulated)
 	}
 
 	var buf bytes.Buffer
-	if err := bundle.Write(&buf, b); err != nil {
+	if err := sdk.Write(&buf, b); err != nil {
 		t.Fatalf("Write() error = %v", err)
 	}
 	encoded := buf.String()

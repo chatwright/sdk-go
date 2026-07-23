@@ -1,13 +1,13 @@
 // Command gen regenerates formats/run-bundle/v1/schema.json from this
 // module's Go types via internal/schemagen. Run it from the repository root
-// (e.g. via bundle/bundle.go's //go:generate directive, or by hand as
+// (e.g. via bundle.go's //go:generate directive, or by hand as
 // `go run ./internal/schemagen/gen`) whenever a change to the types
-// schemagen.Generate reflects — bundle.Bundle and everything it embeds —
+// schemagen.Generate reflects — sdk.Bundle and everything it embeds —
 // should be reflected in the committed schema.
 //
-// bundle/schema_test.go's drift-guard test fails the build if this command
-// has not been re-run after such a change: it is the only supported way to
-// update the committed file, deliberately never a hand-edit.
+// schema_test.go's drift-guard test fails the build if this command has not
+// been re-run after such a change: it is the only supported way to update
+// the committed file, deliberately never a hand-edit.
 package main
 
 import (
@@ -15,11 +15,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chatwright/chatwright/internal/schemagen"
+	"chatwright.dev/sdk/internal/schemagen"
 )
 
-// outputPath is repository-root-relative, matching where
-// bundle/schema_test.go reads the committed file from.
+// outputPath is repository-root-relative, matching where schema_test.go
+// reads the committed file from.
 const outputPath = "formats/run-bundle/v1/schema.json"
 
 func main() {
@@ -56,9 +56,10 @@ func run() error {
 
 // repoRoot locates the module root by walking up from the current working
 // directory to the nearest go.mod — go:generate runs with the working
-// directory set to the file carrying the directive (bundle/), and a plain
-// `go run ./internal/schemagen/gen` from the repository root also needs to
-// resolve the same outputPath, so this cannot simply assume either cwd.
+// directory set to the file carrying the directive (here the repository
+// root, since bundle.go lives at the module root), and a plain
+// `go run ./internal/schemagen/gen` from any subdirectory also needs to
+// resolve the same outputPath, so this cannot simply assume the cwd.
 func repoRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {

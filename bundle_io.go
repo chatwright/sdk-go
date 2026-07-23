@@ -1,4 +1,4 @@
-package bundle
+package sdk
 
 import (
 	"encoding/json"
@@ -28,10 +28,10 @@ var ErrUnknownPartKind = errors.New("bundle: unknown part kind")
 var ErrMissingAIGoalSection = errors.New("bundle: ai-goal part missing its aiGoal section")
 
 // Write writes b to w as indented, human-readable JSON, terminated by a
-// trailing newline — the same style actor.Cassette.Save uses for its own
-// checked-in JSON files, so a Bundle is reviewable in a PR diff and
-// inspectable by hand, not just by a player. See the package doc comment for
-// this format's file-naming convention ("*.chatwright.json").
+// trailing newline — the same style the chatwright runtime's cassette files
+// use for their own checked-in JSON, so a Bundle is reviewable in a PR diff
+// and inspectable by hand, not just by a player. See the package doc comment
+// for this format's file-naming convention ("*.chatwright.json").
 //
 // Output is deterministic: encoding/json always renders a struct's fields in
 // their declared order (see Bundle's own doc comment for that order) and

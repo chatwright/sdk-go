@@ -1,14 +1,15 @@
-// Package bundle defines Chatwright's run-bundle format v1: the persisted,
-// self-contained artifact a Web UI player (Chatwright Studio) replays. A
-// Bundle needs nothing else — no live emulator, no database, no network
-// access — to show what happened during a run and why it concluded what it
-// did.
+// Package sdk is the Go embodiment of Chatwright's run-bundle format v1: the
+// persisted, self-contained artifact a Web UI player (Chatwright Studio)
+// replays. A Bundle needs nothing else — no live emulator, no database, no
+// network access — to show what happened during a run and why it concluded
+// what it did.
 //
-// The artifact spans more than one package's concerns (a Goal, a chat
-// journal, retained observations, loop events, a campaign.Report, optional
-// datastate.Evidence), which is why it lives in its own top-level package
-// rather than inside campaign, which now keeps only Report and its
-// assembly.
+// This module (chatwright.dev/sdk) owns the format's wire model: every type
+// the published JSON Schema describes lives in this single package,
+// alongside Write/Read IO and the schema generator (internal/schemagen). The
+// runtime that produces bundles — platform emulators, the actor loop,
+// campaign assembly — lives in github.com/chatwright/chatwright and builds
+// on these types; nothing here depends on that runtime.
 //
 // Shape: a Bundle carries one or more Runs (today's writers always emit
 // exactly one). A Run carries an actors roster, a run-level, continuous,
@@ -16,10 +17,10 @@
 // (ai-goal today; deterministic reserved) and a JournalBoundary slicing the
 // run-level journal into the entries that part covers, so parts never
 // duplicate journal content. See Bundle, Run, Actor and Part for the full
-// shape, and spec/ideas/hybrid-runs.md for why runs are structured this way:
-// a plain campaign is exactly a single-part, single-run Bundle, and the same
-// shape accommodates a run mixing deterministic and AI-goal passages without
-// any schema change.
+// shape, and the standard repository's spec/ideas/hybrid-runs.md for why
+// runs are structured this way: a plain campaign is exactly a single-part,
+// single-run Bundle, and the same shape accommodates a run mixing
+// deterministic and AI-goal passages without any schema change.
 //
 // Filename convention: a Bundle file is named "<anything>.chatwright.json"
 // (e.g. "greetbot-language.chatwright.json") so a player, a file browser or
@@ -27,24 +28,17 @@
 //
 // The full wire shape is also published as a JSON Schema, generated from
 // these Go types (see internal/schemagen) and committed at
-// formats/run-bundle/v1/schema.json; bundle/schema_test.go gates both that
-// the schema stays in sync with these types and that a Bundle this package
+// formats/run-bundle/v1/schema.json; schema_test.go gates both that the
+// schema stays in sync with these types and that a Bundle this package
 // produces validates against it.
 //
-//go:generate go run ../internal/schemagen/gen
-package bundle
+//go:generate go run ./internal/schemagen/gen
+package sdk
 
 import (
 	"runtime/debug"
 	"sort"
 	"time"
-
-	"github.com/chatwright/chatwright/actor"
-	"github.com/chatwright/chatwright/campaign"
-	"github.com/chatwright/chatwright/datastate"
-	"github.com/chatwright/chatwright/goal"
-	"github.com/chatwright/chatwright/observe"
-	"github.com/chatwright/chatwright/platform"
 )
 
 // FormatV1 is the run-bundle format identifier this package reads and
@@ -55,16 +49,16 @@ import (
 const FormatV1 = "https://chatwright.dev/formats/run-bundle/v1"
 
 // EndpointProfilePlatformEmulated is a Run.EndpointProfile label for a run
-// driven against a platform.Emulator — the only endpoint profile this module
-// currently produces (see decision 0008 and docs/glossary.md's "endpoint
-// profile" entry: "platform-emulated (strongest), headless engine, or future
-// profiles"). Run.EndpointProfile is a plain string, not restricted to this
-// constant, so a future profile never requires a schema change — only a new
-// label.
+// driven against an emulated platform API — the only endpoint profile the
+// chatwright runtime currently produces (see the standard repository's
+// decision 0008 and docs/glossary.md's "endpoint profile" entry:
+// "platform-emulated (strongest), headless engine, or future profiles").
+// Run.EndpointProfile is a plain string, not restricted to this constant, so
+// a future profile never requires a schema change — only a new label.
 const EndpointProfilePlatformEmulated = "platform-emulated"
 
-// chatwrightModulePath is this module's own import path — see ModuleVersion.
-const chatwrightModulePath = "github.com/chatwright/chatwright"
+// sdkModulePath is this module's own import path — see ModuleVersion.
+const sdkModulePath = "chatwright.dev/sdk"
 
 // Bundle is the top-level run-bundle document: a declared Format, caller
 // Metadata, and one or more Runs. Field order below is Bundle's stable JSON
@@ -82,9 +76,9 @@ type Bundle struct {
 	Metadata Metadata `json:"metadata"`
 
 	// Runs is every run this Bundle carries, in the order the caller
-	// assembled them. Today's writers (SingleAIGoalRun) always produce
-	// exactly one; the shape accommodates a future multi-run file (e.g.
-	// several campaigns bundled for one delivery) without a schema change.
+	// assembled them. Today's writers always produce exactly one; the shape
+	// accommodates a future multi-run file (e.g. several campaigns bundled
+	// for one delivery) without a schema change.
 	Runs []Run `json:"runs"`
 }
 
@@ -95,13 +89,13 @@ type Bundle struct {
 // Metadata-level label would have been misleading.
 type Metadata struct {
 	// CreatedAt is when this Bundle was assembled, supplied by the caller
-	// (never time.Now internally — see chatwright's broader injected-clock
-	// convention, e.g. goal.NewCampaignState, actor.Config.Now) so
-	// assembling a Bundle is itself deterministic and testable.
+	// (never time.Now internally — see Chatwright's broader injected-clock
+	// convention) so assembling a Bundle is itself deterministic and
+	// testable.
 	CreatedAt time.Time `json:"createdAt"`
 
-	// ChatwrightVersion is the chatwright module's own resolved version —
-	// see ModuleVersion — left empty when it cannot be determined (e.g. a
+	// ChatwrightVersion is the sdk module's own resolved version — see
+	// ModuleVersion — left empty when it cannot be determined (e.g. a
 	// `go test` run inside this repository itself, which always reports
 	// "(devel)"; see ModuleVersion's doc comment). "If available" is
 	// load-bearing: a Bundle is still valid and complete without it.
@@ -129,38 +123,37 @@ type Author struct {
 // Run is one run's complete, self-contained record: who was in the
 // conversation (Actors), the continuous per-chat journal the whole run
 // produced (Chats), and the ordered passages the run was composed of
-// (Parts). Today's writers (SingleAIGoalRun) always emit a Run with exactly
-// one ai-goal Part spanning the whole journal — see spec/ideas/hybrid-runs.md
-// for the hybrid (deterministic + ai-goal) runs this shape exists to
-// accommodate without a future schema change.
+// (Parts). Today's writers always emit a Run with exactly one ai-goal Part
+// spanning the whole journal — see the standard repository's
+// spec/ideas/hybrid-runs.md for the hybrid (deterministic + ai-goal) runs
+// this shape exists to accommodate without a future schema change.
 type Run struct {
 	// ID is caller-supplied and only needs to be unique within this Bundle.
 	ID string `json:"id"`
 
-	// Platform is the platform name this run drove (e.g. "telegram") — see
-	// platform.Platform.Name.
+	// Platform is the platform name this run drove (e.g. "telegram").
 	Platform string `json:"platform"`
 
-	// EndpointProfile is this run's declared endpoint profile (decision
-	// 0008; docs/glossary.md's "endpoint profile" entry) — e.g.
-	// EndpointProfilePlatformEmulated. Evidence is never interchangeable
-	// across profiles, so a player must always have this label, never infer
-	// it.
+	// EndpointProfile is this run's declared endpoint profile (the standard
+	// repository's decision 0008; docs/glossary.md's "endpoint profile"
+	// entry) — e.g. EndpointProfilePlatformEmulated. Evidence is never
+	// interchangeable across profiles, so a player must always have this
+	// label, never infer it.
 	EndpointProfile string `json:"endpointProfile"`
 
 	// Actors is the roster of everyone who took part in this run — every
 	// AI agent, human, scripted or replay actor that acted, plus the
 	// bot-under-test itself — so a player can attribute every journal entry
-	// to whoever produced it (see platform.JournalEntry.FromID and Actor's
-	// own doc comment).
+	// to whoever produced it (see JournalEntry.FromID and Actor's own doc
+	// comment).
 	Actors []Actor `json:"actors"`
 
 	// Chats is the run's continuous, per-chat journal: one entry per
 	// distinct chat ID, in the order the caller assembled them, each
-	// carrying that chat's entire platform.JournalEntry history for the
-	// whole run — never re-split or duplicated per Part. A Part slices this
-	// journal by reference (see Part.JournalBoundary) rather than embedding
-	// its own copy.
+	// carrying that chat's entire JournalEntry history for the whole run —
+	// never re-split or duplicated per Part. A Part slices this journal by
+	// reference (see Part.JournalBoundary) rather than embedding its own
+	// copy.
 	Chats []ChatJournal `json:"chats"`
 
 	// Parts is this run's ordered sequence of passages — see Part. Today's
@@ -174,19 +167,19 @@ type Run struct {
 	// task completions, findings and the like need no schema entry here,
 	// since a player derives them directly from Parts/AIGoalSection; a
 	// Bookmark is only for a marker no derivation already produces. Today's
-	// writers (SingleAIGoalRun) emit none unless the caller supplies them.
+	// writers emit none unless the caller supplies them.
 	Bookmarks []Bookmark `json:"bookmarks,omitempty"`
 
 	// Annotations is an optional list of comments attached to moments in
-	// this run's conversation — see Annotation. Today's writers
-	// (SingleAIGoalRun) emit none unless the caller supplies them.
+	// this run's conversation — see Annotation. Today's writers emit none
+	// unless the caller supplies them.
 	Annotations []Annotation `json:"annotations,omitempty"`
 }
 
 // Bookmark is a manual fast-forward marker for a player: a caller-chosen
 // point in the run's journal worth jumping straight to. Bookmark exists only
 // for markers a player cannot already derive on its own — part boundaries,
-// task completions and campaign.Finding entries are all recoverable from
+// task completions and Finding entries are all recoverable from
 // Run.Parts/AIGoalSection directly, so nothing here should duplicate those;
 // use a Bookmark for the rest (e.g. "the moment the bug reproduced").
 type Bookmark struct {
@@ -231,7 +224,7 @@ type Annotation struct {
 
 // Anchor locates one moment in a run's journal, shared by Bookmark and
 // Annotation. ChatID and EntryIndex are required and always resolvable
-// against Run.Chats for a Bundle this package wrote; MessageID and Version
+// against Run.Chats for a Bundle the runtime wrote; MessageID and Version
 // are optional and, together, pin an exact revision of an edited message —
 // versioned message identity — rather than whatever its latest version
 // happens to be by the time a player renders it.
@@ -241,28 +234,28 @@ type Anchor struct {
 	// EntryIndex is the index into that ChatJournal.Entries this anchor
 	// points at.
 	EntryIndex int `json:"entryIndex"`
-	// MessageID optionally pins the logical message (platform.JournalEntry.
-	// MessageID) this anchor is about, when it is more specific than "this
-	// journal entry" — e.g. an Annotation about a message that was later
-	// edited, anchored to the message rather than to one particular edit.
+	// MessageID optionally pins the logical message (JournalEntry.MessageID)
+	// this anchor is about, when it is more specific than "this journal
+	// entry" — e.g. an Annotation about a message that was later edited,
+	// anchored to the message rather than to one particular edit.
 	MessageID int `json:"messageId,omitempty"`
-	// Version optionally pins the exact edit (platform.JournalEntry.
-	// Version) MessageID was at, so an Annotation about "this specific
-	// wording" survives a later edit instead of silently retargeting to the
+	// Version optionally pins the exact edit (JournalEntry.Version)
+	// MessageID was at, so an Annotation about "this specific wording"
+	// survives a later edit instead of silently retargeting to the
 	// message's newest version.
 	Version int `json:"version,omitempty"`
 }
 
 // ChatJournal is one chat's complete structured journal — the same
-// platform.JournalEntry records platform.Emulator.Journal returns, carried
-// verbatim (including platform-native identifiers) because a Bundle is the
-// developer/trace-level artifact platform.JournalEntry's own doc comment
-// describes, not the actor-facing observe surface. It is run-level and
+// JournalEntry records the runtime's platform emulator journal returns,
+// carried verbatim (including platform-native identifiers) because a Bundle
+// is the developer/trace-level artifact JournalEntry's own doc comment
+// describes, not the actor-facing observation surface. It is run-level and
 // continuous: a Part never carries its own ChatJournal, only a
 // JournalBoundary referencing a slice of this one.
 type ChatJournal struct {
-	ChatID  int64                   `json:"chatId"`
-	Entries []platform.JournalEntry `json:"entries"`
+	ChatID  int64          `json:"chatId"`
+	Entries []JournalEntry `json:"entries"`
 }
 
 // ActorType classifies one roster Actor's origin.
@@ -270,14 +263,15 @@ type ActorType string
 
 // Actor types. See Actor and ActorType.
 const (
-	// ActorAIAgent: an AI model proposing actions via an actor.Provider.
+	// ActorAIAgent: an AI model proposing actions via the runtime's
+	// provider seam.
 	ActorAIAgent ActorType = "ai-agent"
 	// ActorHuman: a person driving the conversation directly.
 	ActorHuman ActorType = "human"
-	// ActorScripted: a fixed, deterministic proposal sequence (e.g.
-	// actor.ScriptedProvider) or a deterministic scenario fragment.
+	// ActorScripted: a fixed, deterministic proposal sequence or a
+	// deterministic scenario fragment.
 	ActorScripted ActorType = "scripted"
-	// ActorReplay: a recorded run replayed from an actor.Cassette.
+	// ActorReplay: a recorded run replayed from a cassette.
 	ActorReplay ActorType = "replay"
 	// ActorBot: the bot-under-test itself, the other side of the
 	// conversation from every other actor type above.
@@ -285,13 +279,13 @@ const (
 )
 
 // Actor is one participant in a Run's conversation — the roster entry that
-// lets a player attribute every platform.JournalEntry (via its FromID) and
-// every actor.LoopEvent (via a Part's aiGoal.actorId) to whoever actually
-// produced it, rather than leaving that to be inferred from Direction alone.
+// lets a player attribute every JournalEntry (via its FromID) and every
+// LoopEvent (via a Part's aiGoal.actorId) to whoever actually produced it,
+// rather than leaving that to be inferred from Direction alone.
 type Actor struct {
 	// ID is this Bundle's own stable identity for the actor — referenced by
-	// Part's aiGoal.actorId and resolvable against a
-	// platform.JournalEntry.FromID through PlatformIdentities.
+	// Part's aiGoal.actorId and resolvable against a JournalEntry.FromID
+	// through PlatformIdentities.
 	ID string `json:"id"`
 
 	// Type classifies this actor's origin — see ActorType.
@@ -329,7 +323,7 @@ type ActorProvider struct {
 	// Name is the provider's short identifier (e.g. "anthropic").
 	Name string `json:"name,omitempty"`
 
-	// ModelIDs is the aggregated set of actor.Usage.Model ids that actually
+	// ModelIDs is the aggregated set of Usage.Model ids that actually
 	// proposed an action for this actor during the run — see
 	// AggregateModelIDs, the canonical way to compute it.
 	ModelIDs []string `json:"modelIds,omitempty"`
@@ -345,21 +339,22 @@ const (
 	// part — see AIGoalSection.
 	PartKindAIGoal PartKind = "ai-goal"
 	// PartKindDeterministic: a deterministic scenario fragment executed for
-	// this part. Reserved for the hybrid-runs runtime (see
-	// spec/ideas/hybrid-runs.md): no Go struct or "deterministic" JSON
-	// section is defined yet, and no writer in this module produces one —
-	// Read still accepts the kind (so a future writer's output round-trips
-	// once a section is defined) but the section itself is not modelled.
+	// this part. Reserved for the hybrid-runs runtime (see the standard
+	// repository's spec/ideas/hybrid-runs.md): no Go struct or
+	// "deterministic" JSON section is defined yet, and no writer produces
+	// one — Read still accepts the kind (so a future writer's output
+	// round-trips once a section is defined) but the section itself is not
+	// modelled.
 	PartKindDeterministic PartKind = "deterministic"
 )
 
 // Part is one ordered passage of a Run: a kind, a slice of the run-level
 // journal this passage covers, and a kind-scoped section carrying that
 // passage's own detail (aiGoal today; a future "deterministic" section is
-// reserved — see PartKindDeterministic). Today's writers (SingleAIGoalRun)
-// always produce exactly one Part per Run, covering the whole journal; the
-// ordered-list shape on Run.Parts is what lets a future hybrid run add more
-// Parts without any schema change.
+// reserved — see PartKindDeterministic). Today's writers always produce
+// exactly one Part per Run, covering the whole journal; the ordered-list
+// shape on Run.Parts is what lets a future hybrid run add more Parts without
+// any schema change.
 type Part struct {
 	// ID is caller-supplied and only needs to be unique within its Run.
 	ID string `json:"id"`
@@ -412,64 +407,46 @@ type AIGoalSection struct {
 	// not converted to plain strings the way Report's fields are, since a
 	// player needs the full Goal (task dependencies, constraints, budgets)
 	// to render it, not just the outcome Report already summarises.
-	Goal goal.Goal `json:"goal"`
+	Goal Goal `json:"goal"`
 
 	// ActorID references the Run.Actors entry that ran this part's loop.
 	ActorID string `json:"actorId"`
 
-	// Events is every actor.LoopEvent the loop recorded for this part, in
-	// Loop.Events' own order (Index-ascending, across every task the loop
-	// ran).
-	Events []actor.LoopEvent `json:"events"`
+	// Events is every LoopEvent the loop recorded for this part, in the
+	// loop's own order (Index-ascending, across every task the loop ran).
+	Events []LoopEvent `json:"events"`
 
-	// Observations is every observe.Observation the loop retained (see
-	// actor.Config.DisableObservationRetention and actor.Loop.Observations),
-	// ordered ascending by Sequence — not the raw map[int64]observe.Observation
-	// Loop.Observations returns, so this section's JSON stays chronologically
+	// Observations is every Observation the loop retained, ordered
+	// ascending by Sequence — not the raw map[int64]Observation the
+	// runtime's loop returns, so this section's JSON stays chronologically
 	// readable regardless of encoding/json's own (string-lexicographic, not
 	// numeric) map-key ordering for an integer-keyed map.
 	Observations []RetainedObservation `json:"observations"`
 
-	// Report is this part's assembled campaign.Report (see campaign.Assemble).
-	Report campaign.Report `json:"report"`
+	// Report is this part's assembled campaign Report — see Report.
+	Report Report `json:"report"`
 
-	// Evidence is the datastate.Evidence any data-state assertions produced
+	// Evidence is the DataStateEvidence any data-state assertions produced
 	// during this part, in the order they were run. Optional: a part with
 	// no data-state assertions attached carries none.
-	Evidence []datastate.Evidence `json:"evidence,omitempty"`
+	Evidence []DataStateEvidence `json:"evidence,omitempty"`
 }
 
-// RetainedObservation pairs one retained observe.Observation with its own
-// Sequence, so AIGoalSection.Observations reads as an ordered list rather
-// than a JSON object keyed by a stringified int64 (see
-// AIGoalSection.Observations).
+// RetainedObservation pairs one retained Observation with its own Sequence,
+// so AIGoalSection.Observations reads as an ordered list rather than a JSON
+// object keyed by a stringified int64 (see AIGoalSection.Observations).
 type RetainedObservation struct {
-	Sequence    int64               `json:"sequence"`
-	Observation observe.Observation `json:"observation"`
-}
-
-// SortObservations converts observations — as returned by
-// actor.Loop.Observations — into an AIGoalSection.Observations-ready slice,
-// ordered ascending by Sequence. It is the canonical way a caller turns a
-// Loop's retained observations into that field: see
-// AIGoalSection.Observations for why the slice form, not the map
-// encoding/json would otherwise produce, is what this package stores.
-func SortObservations(observations map[int64]observe.Observation) []RetainedObservation {
-	out := make([]RetainedObservation, 0, len(observations))
-	for seq, obs := range observations {
-		out = append(out, RetainedObservation{Sequence: seq, Observation: obs})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Sequence < out[j].Sequence })
-	return out
+	Sequence    int64       `json:"sequence"`
+	Observation Observation `json:"observation"`
 }
 
 // AggregateModelIDs returns the sorted, deduplicated set of every non-empty
-// actor.Usage.Model value across events. It is the canonical way an
+// Usage.Model value across events. It is the canonical way an
 // ActorProvider.ModelIDs is computed, so two callers assembling a roster
 // entry from the same events always produce the same aggregated identity
 // list, regardless of how many times — or in what order — any one model was
 // actually used.
-func AggregateModelIDs(events []actor.LoopEvent) []string {
+func AggregateModelIDs(events []LoopEvent) []string {
 	seen := make(map[string]struct{})
 	for _, e := range events {
 		if e.Usage.Model == "" {
@@ -485,118 +462,34 @@ func AggregateModelIDs(events []actor.LoopEvent) []string {
 	return ids
 }
 
-// SingleAIGoalRunInput is everything SingleAIGoalRun needs to assemble a
-// single-part, single-run Bundle.Run from a plain campaign's own pieces.
-type SingleAIGoalRunInput struct {
-	// RunID is caller-supplied — see Run.ID.
-	RunID string
-	// Platform is the platform name the run drove — see Run.Platform.
-	Platform string
-	// EndpointProfile is the run's declared endpoint profile — see
-	// Run.EndpointProfile, EndpointProfilePlatformEmulated.
-	EndpointProfile string
-	// Actors is the run's roster — see Run.Actors.
-	Actors []Actor
-	// Chats is the run's continuous per-chat journal — see Run.Chats.
-	Chats []ChatJournal
-
-	// PartID and PartTitle name the single ai-goal Part this run gets — see
-	// Part.ID, Part.Title.
-	PartID    string
-	PartTitle string
-
-	// ActorID references the Actors entry that ran the loop — see
-	// AIGoalSection.ActorID.
-	ActorID string
-
-	// Goal, Events, Observations, Report and Evidence become the part's
-	// AIGoalSection verbatim — see AIGoalSection's own fields.
-	Goal         goal.Goal
-	Events       []actor.LoopEvent
-	Observations []RetainedObservation
-	Report       campaign.Report
-	Evidence     []datastate.Evidence
-
-	// Bookmarks and Annotations become the Run's own fields verbatim — see
-	// Run.Bookmarks, Run.Annotations. Both are optional: a caller with
-	// nothing to attach leaves them nil, and the resulting Run carries none
-	// (SingleAIGoalRun never invents one).
-	Bookmarks   []Bookmark
-	Annotations []Annotation
-}
-
-// SingleAIGoalRun builds a Run containing exactly one ai-goal Part whose
-// JournalBoundary spans each chat's entire journal — the "plain campaign is
-// a single ai-goal part" path spec/ideas/hybrid-runs.md's MVP scope
-// describes, and the one every writer in this module uses today. A future
-// hybrid run assembles its Run directly (Run{Parts: []Part{...}}) instead,
-// once a runtime produces more than one Part; this helper only ever emits
-// one.
-func SingleAIGoalRun(in SingleAIGoalRunInput) Run {
-	boundary := JournalBoundary{Chats: make([]ChatBoundary, 0, len(in.Chats))}
-	for _, chat := range in.Chats {
-		boundary.Chats = append(boundary.Chats, ChatBoundary{
-			ChatID:     chat.ChatID,
-			FirstEntry: 0,
-			EntryCount: len(chat.Entries),
-		})
-	}
-
-	part := Part{
-		ID:              in.PartID,
-		Title:           in.PartTitle,
-		Kind:            PartKindAIGoal,
-		JournalBoundary: boundary,
-		AIGoal: &AIGoalSection{
-			Goal:         in.Goal,
-			ActorID:      in.ActorID,
-			Events:       in.Events,
-			Observations: in.Observations,
-			Report:       in.Report,
-			Evidence:     in.Evidence,
-		},
-	}
-
-	return Run{
-		ID:              in.RunID,
-		Platform:        in.Platform,
-		EndpointProfile: in.EndpointProfile,
-		Actors:          in.Actors,
-		Chats:           in.Chats,
-		Parts:           []Part{part},
-		Bookmarks:       in.Bookmarks,
-		Annotations:     in.Annotations,
-	}
-}
-
-// ModuleVersion returns the chatwright module's own resolved version, read
-// from the currently running binary's runtime/debug build info, or "" when
-// it cannot be determined.
+// ModuleVersion returns the sdk module's own resolved version, read from the
+// currently running binary's runtime/debug build info, or "" when it cannot
+// be determined.
 //
-// A Bundle is normally produced by a bot's own test binary, which imports
-// chatwright as a dependency rather than being chatwright itself. In that
-// (expected) case it is chatwright's entry in the binary's
-// debug.BuildInfo.Deps that carries the meaningful resolved version (a git
-// tag or pseudo-version), so Deps is searched for chatwrightModulePath. The
-// less common case — the running binary IS chatwright's own module, e.g. a
-// test run inside this repository — is also covered, via
+// A Bundle is normally produced by a program (e.g. a bot's test binary via
+// the chatwright runtime) that imports this module as a dependency rather
+// than being this module itself. In that (expected) case it is this module's
+// entry in the binary's debug.BuildInfo.Deps that carries the meaningful
+// resolved version (a git tag or pseudo-version), so Deps is searched for
+// sdkModulePath. The less common case — the running binary IS this module,
+// e.g. a test run inside this repository — is also covered, via
 // debug.BuildInfo.Main, checked first.
 //
 // Either way, "(devel)" (Go's placeholder for "no resolvable version") and
-// "" are both treated as "not available" — mirroring
-// cmd/chatwright/main.go's own cliVersion fallback for the same reason: a
-// plain `go build`/`go test` inside this repository, or inside a consumer
-// module that has not pinned a chatwright version, never has one.
+// "" are both treated as "not available": a plain `go build`/`go test`
+// inside this repository, or inside a consumer module that has not pinned an
+// sdk version, never has one — which is exactly why
+// Metadata.ChatwrightVersion is optional.
 func ModuleVersion() string {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
 		return ""
 	}
-	if bi.Main.Path == chatwrightModulePath {
+	if bi.Main.Path == sdkModulePath {
 		return resolvedVersion(bi.Main.Version)
 	}
 	for _, dep := range bi.Deps {
-		if dep.Path == chatwrightModulePath {
+		if dep.Path == sdkModulePath {
 			return resolvedVersion(dep.Version)
 		}
 	}
