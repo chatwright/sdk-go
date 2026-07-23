@@ -47,6 +47,25 @@ func goldenBundle() sdk.Bundle {
 			Proposal: sdk.Proposal{Kind: sdk.ProposeTaskDone, Rationale: "onboarding confirmed"},
 			Action:   sdk.ActionOutcome{Kind: sdk.ActionTaskCompleted},
 		},
+		{
+			// A ProposeSendText proposal that violated the task's
+			// machine-checkable content rules — blocked before it ever
+			// reached the bot. Exercises ActionOutcomeKind's additive
+			// "blocked-constraint-violation" value.
+			Index: 3, At: fixedAt.Add(3 * time.Second), TaskID: "onboarding", ObservationSequence: 2,
+			Proposal: sdk.Proposal{Kind: sdk.ProposeSendText, Text: "add a plasma TV", Rationale: "the actor tried an off-domain item"},
+			Action:   sdk.ActionOutcome{Kind: sdk.ActionBlockedConstraintViolation, Detail: "text does not contain any allowed vocabulary term"},
+		},
+		{
+			// A proposal requested strictly to measure whether the actor
+			// would keep acting after its task's evidence-defined
+			// completion criteria already held — recorded, never executed.
+			// Exercises ActionOutcomeKind's additive "overshoot-probe"
+			// value.
+			Index: 4, At: fixedAt.Add(4 * time.Second), TaskID: "onboarding", ObservationSequence: 2,
+			Proposal: sdk.Proposal{Kind: sdk.ProposeSendText, Text: "thanks!", Rationale: "the actor wanted to keep going"},
+			Action:   sdk.ActionOutcome{Kind: sdk.ActionOvershootProbe, Detail: "requested after evidence-defined completion; recorded, never executed"},
+		},
 	}
 	g := sdk.Goal{ID: "listus", Title: "Exercise onboarding", Tasks: []sdk.Task{
 		{ID: "onboarding", Title: "Complete onboarding", SuccessCriteria: "user completes language selection"},
@@ -65,8 +84,21 @@ func goldenBundle() sdk.Bundle {
 				Status:          "completed", Attempted: true,
 			},
 		},
-		Findings: []sdk.Finding{},
-		Usage:    sdk.AggregateUsage{InputTokens: 5, OutputTokens: 2, Cost: 0.3, CallCount: 2},
+		Findings: []sdk.Finding{
+			{
+				Kind: sdk.FindingConstraintViolation, TaskID: "onboarding",
+				Summary:    `task "onboarding": the actor proposed text that violated its content rules; blocked before it reached the bot`,
+				Evidence:   sdk.FindingEvidence{ObservationSequences: []int64{2}, LoopEventIndexes: []int{3}},
+				Confidence: "mechanical",
+			},
+			{
+				Kind: sdk.FindingActorOvershoot, TaskID: "onboarding",
+				Summary:    `task "onboarding": the actor proposed another action after its evidence-defined completion criteria already held`,
+				Evidence:   sdk.FindingEvidence{ObservationSequences: []int64{2}, LoopEventIndexes: []int{4}},
+				Confidence: "mechanical",
+			},
+		},
+		Usage: sdk.AggregateUsage{InputTokens: 5, OutputTokens: 2, Cost: 0.3, CallCount: 5},
 	}
 
 	chats := []sdk.ChatJournal{

@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- `ActionOutcomeKind` gained two additive values: `blocked-constraint-violation`
+  (a `ProposeSendText` proposal whose text violated the active task's/goal's
+  machine-checkable content rules — a vocabulary allowlist, deny-pattern or
+  custom predicate — blocked before it ever reached the bot) and
+  `overshoot-probe` (a proposal requested and recorded strictly to measure
+  whether an actor would keep acting after its task's machine-checkable
+  completion criteria already held; never submitted to the platform).
+- `FindingKind` gained two additive values: `actor-overshoot` and
+  `constraint-violation`, and is now itself a closed, schema-enum-constrained
+  type for the first time (it was reflected as a bare open string before this
+  release — an oversight relative to the rest of this module's closed-enum
+  discipline, fixed here alongside the two new values it needed anyway).
+  Both new finding kinds are the wire side of
+  [spec/ideas/evidence-defined-completion.md](https://github.com/chatwright/chatwright/blob/main/spec/ideas/evidence-defined-completion.md)
+  and
+  [spec/ideas/proposal-content-constraints.md](https://github.com/chatwright/chatwright/blob/main/spec/ideas/proposal-content-constraints.md)
+  in the `chatwright/chatwright` standard repository; the loop-side mechanics
+  land in `chatwright/runtime-go`. `goal.StopReason`'s new
+  `goal-met-by-evidence` value does NOT require a change here:
+  `CampaignReport.stopReason` is a plain, unconstrained string on the wire
+  (never a closed enum — see its own doc comment), so any new
+  `goal.StopReason` constant is already representable without a schema
+  change.
+  `formats/run-bundle/v1/schema.json` regenerated accordingly (purely
+  additive: two `ActionOutcomeKind` values, and `CampaignFinding.kind` newly
+  closed to five values); `testdata/bundle_golden.json` extended with two
+  more `LoopEvent`s (one per new `ActionOutcomeKind` value) and two more
+  `Finding`s (one per new `FindingKind` value).
+
+## 0.1.1
+
 - `LoopEvent` gained an additive, optional `proposeError` field (`omitempty`
   string): set exactly when a provider's `Propose` call failed before it
   ever produced a proposal, so a failed call can still leave a `LoopEvent`

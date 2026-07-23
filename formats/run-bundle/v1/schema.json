@@ -13,7 +13,9 @@
             "executed-no-effect",
             "resolution-failed",
             "task-completed",
-            "task-given-up"
+            "task-given-up",
+            "blocked-constraint-violation",
+            "overshoot-probe"
           ]
         },
         "detail": {
@@ -605,7 +607,14 @@
     "CampaignFinding": {
       "properties": {
         "kind": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "verified-defect",
+            "ai-navigation-failure",
+            "coverage-gap",
+            "actor-overshoot",
+            "constraint-violation"
+          ]
         },
         "taskId": {
           "type": "string"
@@ -1212,7 +1221,7 @@
       ]
     }
   },
-  "$comment": "Enum-constrained string fields reflected from this module's Go string-const enums (Direction, JournalEntryKind, Verdict, Actor, ChangeKind, ProposalKind, ActionOutcomeKind) are closed: schema validation rejects any value outside the listed set. This is stricter than bundle.Read itself, which applies no such check — a hand-edited bundle carrying an unrecognised value still reads. Bookmark/Annotation references (Annotation.replyTo, Anchor) are never validated by this schema or by bundle.Read — see bundle.Annotation's doc comment: a dangling reference is a consumer's concern, not a format violation. Every object also rejects properties this schema does not declare (additionalProperties: false), which is stricter than bundle.Read's own forward-compatible decoding (it ignores unknown fields) — this schema describes today's shape, not a compatibility promise for tomorrow's.",
+  "$comment": "Enum-constrained string fields reflected from this module's Go string-const enums (Direction, JournalEntryKind, Verdict, Actor, ChangeKind, ProposalKind, ActionOutcomeKind, FindingKind) are closed: schema validation rejects any value outside the listed set. This is stricter than bundle.Read itself, which applies no such check — a hand-edited bundle carrying an unrecognised value still reads. Bookmark/Annotation references (Annotation.replyTo, Anchor) are never validated by this schema or by bundle.Read — see bundle.Annotation's doc comment: a dangling reference is a consumer's concern, not a format violation. Every object also rejects properties this schema does not declare (additionalProperties: false), which is stricter than bundle.Read's own forward-compatible decoding (it ignores unknown fields) — this schema describes today's shape, not a compatibility promise for tomorrow's.",
   "properties": {
     "format": {
       "type": "string"

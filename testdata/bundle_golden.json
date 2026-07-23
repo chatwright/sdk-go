@@ -229,6 +229,62 @@
                   "kind": "task-completed",
                   "detail": ""
                 }
+              },
+              {
+                "index": 3,
+                "at": "2026-07-22T12:00:03Z",
+                "taskId": "onboarding",
+                "observationSequence": 2,
+                "proposal": {
+                  "kind": "send-text",
+                  "text": "add a plasma TV",
+                  "actionId": "",
+                  "observationSequence": 0,
+                  "rationale": "the actor tried an off-domain item"
+                },
+                "usage": {
+                  "model": "",
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "latencyNanoseconds": 0
+                },
+                "validation": {
+                  "checked": false,
+                  "verdict": "",
+                  "reason": ""
+                },
+                "action": {
+                  "kind": "blocked-constraint-violation",
+                  "detail": "text does not contain any allowed vocabulary term"
+                }
+              },
+              {
+                "index": 4,
+                "at": "2026-07-22T12:00:04Z",
+                "taskId": "onboarding",
+                "observationSequence": 2,
+                "proposal": {
+                  "kind": "send-text",
+                  "text": "thanks!",
+                  "actionId": "",
+                  "observationSequence": 0,
+                  "rationale": "the actor wanted to keep going"
+                },
+                "usage": {
+                  "model": "",
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "latencyNanoseconds": 0
+                },
+                "validation": {
+                  "checked": false,
+                  "verdict": "",
+                  "reason": ""
+                },
+                "action": {
+                  "kind": "overshoot-probe",
+                  "detail": "requested after evidence-defined completion; recorded, never executed"
+                }
               }
             ],
             "observations": [
@@ -315,12 +371,41 @@
                   "failureCount": 0
                 }
               ],
-              "findings": [],
+              "findings": [
+                {
+                  "kind": "constraint-violation",
+                  "taskId": "onboarding",
+                  "summary": "task \"onboarding\": the actor proposed text that violated its content rules; blocked before it reached the bot",
+                  "evidence": {
+                    "observationSequences": [
+                      2
+                    ],
+                    "loopEventIndexes": [
+                      3
+                    ]
+                  },
+                  "confidence": "mechanical"
+                },
+                {
+                  "kind": "actor-overshoot",
+                  "taskId": "onboarding",
+                  "summary": "task \"onboarding\": the actor proposed another action after its evidence-defined completion criteria already held",
+                  "evidence": {
+                    "observationSequences": [
+                      2
+                    ],
+                    "loopEventIndexes": [
+                      4
+                    ]
+                  },
+                  "confidence": "mechanical"
+                }
+              ],
               "usage": {
                 "inputTokens": 5,
                 "outputTokens": 2,
                 "cost": 0.3,
-                "callCount": 2
+                "callCount": 5
               }
             },
             "evidence": [
