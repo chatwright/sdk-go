@@ -108,6 +108,20 @@ const (
 	// ActionTaskGivenUp: a ProposeGiveUp proposal was accepted; the task's
 	// status moved to failed.
 	ActionTaskGivenUp ActionOutcomeKind = "task-given-up"
+	// ActionBlockedConstraintViolation: a ProposeSendText proposal's text
+	// violated the active task's (or goal's) machine-checkable content
+	// rules — a vocabulary allowlist, a deny-pattern, or a custom
+	// predicate. The runtime never submitted it to the platform; it is
+	// recorded here and re-prompted, counting toward non-progress exactly
+	// like any other invalid proposal. See CampaignFinding's
+	// "constraint-violation" kind.
+	ActionBlockedConstraintViolation ActionOutcomeKind = "blocked-constraint-violation"
+	// ActionOvershootProbe: a proposal requested and recorded strictly to
+	// measure whether the actor would keep acting after its task's
+	// machine-checkable completion criteria already held — the runtime
+	// never submitted it to the platform. See CampaignFinding's
+	// "actor-overshoot" kind.
+	ActionOvershootProbe ActionOutcomeKind = "overshoot-probe"
 )
 
 // String renders k for diagnostics, test failure messages and reports.

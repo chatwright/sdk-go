@@ -66,7 +66,7 @@ const SchemaID = "https://chatwright.dev/formats/run-bundle/v1/schema.json"
 // never tracks a Go-side rename.
 const posture = `Enum-constrained string fields reflected from this module's Go string-const ` +
 	`enums (Direction, JournalEntryKind, Verdict, Actor, ChangeKind, ProposalKind, ` +
-	`ActionOutcomeKind) are closed: schema validation rejects any value outside the listed ` +
+	`ActionOutcomeKind, FindingKind) are closed: schema validation rejects any value outside the listed ` +
 	`set. This is stricter than bundle.Read itself, which applies no such check — a ` +
 	`hand-edited bundle carrying an unrecognised value still reads. Bookmark/Annotation ` +
 	`references (Annotation.replyTo, Anchor) are never validated by this schema or by ` +
@@ -218,7 +218,11 @@ func defsName(t reflect.Type) string {
 // Every other enum below is unconditionally assigned one of its named
 // constants by every producer in the chatwright runtime (verified by
 // reading each call site before the split, not assumed), so none of them
-// need the same treatment.
+// need the same treatment. FindingKind is the newest addition to this list
+// (previously left unconstrained by an oversight predating this comment —
+// closed here for the first time, alongside its two additive new values,
+// actor-overshoot and constraint-violation): a campaign.Finding is always
+// constructed with an explicit Kind, so it needs no "" allowance either.
 func enumMapper(t reflect.Type) *jsonschema.Schema {
 	switch t {
 	case reflect.TypeOf(sdk.Direction("")):
@@ -235,7 +239,11 @@ func enumMapper(t reflect.Type) *jsonschema.Schema {
 		return enumSchema(sdk.ProposalKind(""), sdk.ProposeSendText, sdk.ProposeClick, sdk.ProposeTaskDone, sdk.ProposeGiveUp)
 	case reflect.TypeOf(sdk.ActionOutcomeKind("")):
 		return enumSchema(sdk.ActionOutcomeKind(""), sdk.ActionSkippedInvalid, sdk.ActionExecuted, sdk.ActionExecutedNoEffect,
-			sdk.ActionResolutionFailed, sdk.ActionTaskCompleted, sdk.ActionTaskGivenUp)
+			sdk.ActionResolutionFailed, sdk.ActionTaskCompleted, sdk.ActionTaskGivenUp,
+			sdk.ActionBlockedConstraintViolation, sdk.ActionOvershootProbe)
+	case reflect.TypeOf(sdk.FindingKind("")):
+		return enumSchema(sdk.FindingVerifiedDefect, sdk.FindingAINavigationFailure, sdk.FindingCoverageGap,
+			sdk.FindingActorOvershoot, sdk.FindingConstraintViolation)
 	default:
 		return nil
 	}

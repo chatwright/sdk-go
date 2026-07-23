@@ -73,6 +73,17 @@ const (
 	// concluded, before it stopped — a gap in evidence, not a claim about
 	// the bot.
 	FindingCoverageGap FindingKind = "coverage-gap"
+	// FindingActorOvershoot: the actor kept acting (or was shown, via the
+	// overshoot probe, to want to keep acting) after its task's
+	// machine-checkable completion criteria already held — attributed to
+	// the actor, never misfiled as a bot defect.
+	FindingActorOvershoot FindingKind = "actor-overshoot"
+	// FindingConstraintViolation: the actor proposed text that violated
+	// its task's (or goal's) machine-checkable content rules — a
+	// vocabulary allowlist, a deny-pattern or a custom predicate. The
+	// runtime blocked it before it ever reached the bot; this finding
+	// records that it was attempted.
+	FindingConstraintViolation FindingKind = "constraint-violation"
 )
 
 // FindingEvidence links a Finding back to the observations and loop events
