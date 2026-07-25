@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-07-25
 
 - Renamed `Verdict` to `Freshness` (values unchanged: `fresh`/`stale`), and
   `ValidationOutcome.Verdict` to `ValidationOutcome.Freshness` (wire tag
