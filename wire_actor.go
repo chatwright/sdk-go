@@ -63,15 +63,15 @@ type Usage struct {
 	Cost         *float64      `json:"cost,omitempty"`
 }
 
-// ValidationOutcome is the loop's validate-step verdict for one proposal,
+// ValidationOutcome is the loop's validate-step outcome for one proposal,
 // carrying the runtime's own validation result verbatim when it applies.
 type ValidationOutcome struct {
 	// Checked is false for proposal kinds validation does not apply to
-	// (ProposeSendText, ProposeTaskDone, ProposeGiveUp); Verdict and Reason
-	// are meaningless when Checked is false.
-	Checked bool    `json:"checked"`
-	Verdict Verdict `json:"verdict"`
-	Reason  string  `json:"reason"`
+	// (ProposeSendText, ProposeTaskDone, ProposeGiveUp); Freshness and
+	// Reason are meaningless when Checked is false.
+	Checked   bool      `json:"checked"`
+	Freshness Freshness `json:"freshness"`
+	Reason    string    `json:"reason"`
 }
 
 // ActionOutcomeKind classifies what happened when the loop acted on a

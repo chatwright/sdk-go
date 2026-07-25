@@ -65,7 +65,7 @@ const SchemaID = "https://chatwright.dev/formats/run-bundle/v1/schema.json"
 // sdk's MessageActor); the text is part of the published schema's bytes and
 // never tracks a Go-side rename.
 const posture = `Enum-constrained string fields reflected from this module's Go string-const ` +
-	`enums (Direction, JournalEntryKind, Verdict, Actor, ChangeKind, ProposalKind, ` +
+	`enums (Direction, JournalEntryKind, Freshness, Actor, ChangeKind, ProposalKind, ` +
 	`ActionOutcomeKind, FindingKind) are closed: schema validation rejects any value outside the listed ` +
 	`set. This is stricter than bundle.Read itself, which applies no such check — a ` +
 	`hand-edited bundle carrying an unrecognised value still reads. Bookmark/Annotation ` +
@@ -204,9 +204,10 @@ func defsName(t reflect.Type) string {
 // its named constants so the set stays closed (every value the wire
 // actually carries) rather than silently rejecting real, correct output:
 //
-//   - sdk.Verdict: ValidationOutcome.Verdict is documented as "meaningless
-//     when Checked is false", and the runtime's loop leaves it at "" in
-//     exactly that case (see the golden bundle's own "verdict": "").
+//   - sdk.Freshness: ValidationOutcome.Freshness is documented as
+//     "meaningless when Checked is false", and the runtime's loop leaves it
+//     at "" in exactly that case (see the golden bundle's own
+//     "freshness": "").
 //   - sdk.ProposalKind and sdk.ActionOutcomeKind: LoopEvent.Proposal and
 //     LoopEvent.Action are plain (non-pointer) structs, always present on
 //     the wire, so they cannot simply be omitted when
@@ -229,8 +230,8 @@ func enumMapper(t reflect.Type) *jsonschema.Schema {
 		return enumSchema(sdk.DirectionUser, sdk.DirectionBot)
 	case reflect.TypeOf(sdk.JournalEntryKind("")):
 		return enumSchema(sdk.JournalEntryMessage, sdk.JournalEntryAction, sdk.JournalEntryUncaptured)
-	case reflect.TypeOf(sdk.Verdict("")):
-		return enumSchema(sdk.Verdict(""), sdk.VerdictFresh, sdk.VerdictStale)
+	case reflect.TypeOf(sdk.Freshness("")):
+		return enumSchema(sdk.Freshness(""), sdk.FreshnessFresh, sdk.FreshnessStale)
 	case reflect.TypeOf(sdk.MessageActor("")):
 		return enumSchema(sdk.MessageActorUser, sdk.MessageActorBot)
 	case reflect.TypeOf(sdk.ChangeKind("")):

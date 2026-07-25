@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Renamed `Verdict` to `Freshness` (values unchanged: `fresh`/`stale`), and
+  `ValidationOutcome.Verdict` to `ValidationOutcome.Freshness` (wire tag
+  `verdict` → `freshness`). This resolves a vocabulary collision recorded in
+  the `chatwright/chatwright` glossary: "verdict" now names only the
+  AI-judged-assertion outcome (`passed`/`failed`/`inconclusive`/
+  `unavailable`); the click-validity check this type carries is a validity
+  check against the runtime's own state, not a judgement against a
+  criterion, so it is "freshness". `formats/run-bundle/v1/schema.json`
+  regenerated accordingly (the `freshness` property replaces `verdict`,
+  still required, same enum); `testdata/bundle_golden.json` updated to
+  match. This is a wire-breaking rename for any reader that only accepts
+  `verdict` — readers should add `freshness` support (falling back to
+  `verdict` for bundles written before this release) before upgrading to a
+  runtime that writes this version.
+
 - `ActionOutcomeKind` gained two additive values: `blocked-constraint-violation`
   (a `ProposeSendText` proposal whose text violated the active task's/goal's
   machine-checkable content rules — a vocabulary allowlist, deny-pattern or

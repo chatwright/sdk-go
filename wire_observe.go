@@ -109,22 +109,26 @@ type Observation struct {
 	Changes []Change `json:"changes"`
 }
 
-// Verdict is the deterministic outcome of validating a click proposal
-// against the runtime's current journal state. It is a string type, not an
-// int enum, so it marshals to human-readable JSON (see the Chatwright
-// standard's "JSON artefacts carry human-readable string constants"
-// convention) rather than a bare, meaningless integer.
-type Verdict string
+// Freshness is the deterministic outcome of validating a click proposal
+// against the runtime's current journal state: is the proposed action still
+// present, unchanged, in the runtime's current projection? It is a validity
+// check against the engine's own state, not a judgement against a
+// criterion — see sdk's "verdict" for that (the AI-judged assertion
+// outcome). It is a string type, not an int enum, so it marshals to
+// human-readable JSON (see the Chatwright standard's "JSON artefacts carry
+// human-readable string constants" convention) rather than a bare,
+// meaningless integer.
+type Freshness string
 
 const (
-	// VerdictFresh: the proposed action is present, unchanged, in the
+	// FreshnessFresh: the proposed action is present, unchanged, in the
 	// engine's current projection.
-	VerdictFresh Verdict = "fresh"
-	// VerdictStale: the proposed action is not present in the engine's
+	FreshnessFresh Freshness = "fresh"
+	// FreshnessStale: the proposed action is not present in the engine's
 	// current projection — its source observation is out of date, or was
 	// never issued by that engine at all.
-	VerdictStale Verdict = "stale"
+	FreshnessStale Freshness = "stale"
 )
 
-// String renders v for diagnostics and test failure messages.
-func (v Verdict) String() string { return string(v) }
+// String renders f for diagnostics and test failure messages.
+func (f Freshness) String() string { return string(f) }
