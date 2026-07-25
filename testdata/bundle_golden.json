@@ -165,7 +165,7 @@
                 },
                 "validation": {
                   "checked": false,
-                  "verdict": "",
+                  "freshness": "",
                   "reason": ""
                 },
                 "action": {
@@ -193,7 +193,7 @@
                 },
                 "validation": {
                   "checked": false,
-                  "verdict": "",
+                  "freshness": "",
                   "reason": ""
                 },
                 "action": {
@@ -222,7 +222,7 @@
                 },
                 "validation": {
                   "checked": false,
-                  "verdict": "",
+                  "freshness": "",
                   "reason": ""
                 },
                 "action": {
@@ -250,7 +250,7 @@
                 },
                 "validation": {
                   "checked": false,
-                  "verdict": "",
+                  "freshness": "",
                   "reason": ""
                 },
                 "action": {
@@ -278,7 +278,7 @@
                 },
                 "validation": {
                   "checked": false,
-                  "verdict": "",
+                  "freshness": "",
                   "reason": ""
                 },
                 "action": {
