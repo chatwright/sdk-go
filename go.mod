@@ -1,6 +1,8 @@
 module chatwright.dev/sdk
 
-go 1.26.1
+go 1.26.0
+
+toolchain go1.27.0
 
 require (
 	github.com/invopop/jsonschema v0.14.0
