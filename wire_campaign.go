@@ -61,7 +61,7 @@ type FindingKind string
 // Finding kinds. See FindingKind.
 const (
 	// FindingVerifiedDefect: the actor acted and the observed outcome was
-	// wrong — backed by deterministic or DTQL evidence, or a
+	// wrong — backed by deterministic or TugQL evidence, or a
 	// caller-supplied classification; mechanics alone cannot derive this
 	// kind.
 	FindingVerifiedDefect FindingKind = "verified-defect"
@@ -113,7 +113,7 @@ type Finding struct {
 
 	// Confidence distinguishes how the Finding was derived: "mechanical"
 	// for the deterministic rules the runtime's report assembly applies
-	// itself, or a caller's own label (e.g. "dtql-verified") for
+	// itself, or a caller's own label (e.g. "tugql-verified") for
 	// caller-supplied findings.
 	Confidence string `json:"confidence,omitempty"`
 }

@@ -34,7 +34,7 @@ const (
 type Row map[string]any
 
 // DataStateEvidence is the canonical, JSON-serialisable record of one
-// executed data-state assertion: the exact DTQL query and parameters, the
+// executed data-state assertion: the exact TugQL query and parameters, the
 // holder it ran against, its pass/fail outcome, and a bounded, redacted,
 // normalised preview of the rows it returned. Every exported field carries
 // an explicit lower-camel-case `json` tag — this type reaches a run bundle
@@ -53,7 +53,7 @@ type DataStateEvidence struct {
 	// Holder is the resolved holder name the query ran against (even an
 	// unresolved request records the name that was asked for).
 	Holder string `json:"holder"`
-	// Query is the concrete DTQL text executed.
+	// Query is the concrete TugQL text executed.
 	Query string `json:"query"`
 	// Params is a detached copy of the query's named parameters.
 	Params map[string]any `json:"params"`
