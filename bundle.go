@@ -479,9 +479,10 @@ func AggregateModelIDs(events []LoopEvent) []string {
 // "" are both treated as "not available": a plain `go build`/`go test`
 // inside this repository, or inside a consumer module that has not pinned an
 // sdk version, never has one — which is exactly why
-// Metadata.ChatwrightVersion is optional.
+var readBuildInfo = debug.ReadBuildInfo
+
 func ModuleVersion() string {
-	bi, ok := debug.ReadBuildInfo()
+	bi, ok := readBuildInfo()
 	if !ok {
 		return ""
 	}

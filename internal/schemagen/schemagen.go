@@ -77,8 +77,8 @@ const posture = `Enum-constrained string fields reflected from this module's Go 
 	`schema describes today's shape, not a compatibility promise for tomorrow's.`
 
 // Generate builds the run-bundle format v1 JSON Schema (draft 2020-12) from
-// sdk.Bundle's Go types. See the package doc comment for the two documented
-// corrections applied on top of plain reflection.
+var patchNullable = applyNullablePatches
+
 func Generate() (*jsonschema.Schema, error) {
 	r := &jsonschema.Reflector{
 		Namer:          defsName,
@@ -89,7 +89,7 @@ func Generate() (*jsonschema.Schema, error) {
 	schema.ID = jsonschema.ID(SchemaID)
 	schema.Comments = posture
 
-	if err := applyNullablePatches(schema); err != nil {
+	if err := patchNullable(schema); err != nil {
 		return nil, err
 	}
 	return schema, nil
@@ -277,10 +277,14 @@ func enumSchema[T ~string](values ...T) *jsonschema.Schema {
 // tag, so a nullable field here renders no differently than the library's
 // own native mechanism would.
 func applyNullablePatches(schema *jsonschema.Schema) error {
-	rootName := defsName(reflect.TypeOf(sdk.Bundle{}))
+	return applyNullablePatchesForType(schema, reflect.TypeOf(sdk.Bundle{}))
+}
+
+func applyNullablePatchesForType(schema *jsonschema.Schema, rootType reflect.Type) error {
+	rootName := defsName(rootType)
 
 	var walkErr error
-	walkStructs(reflect.TypeOf(sdk.Bundle{}), func(t reflect.Type) {
+	walkStructs(rootType, func(t reflect.Type) {
 		defName := defsName(t)
 		var props *orderedmap.OrderedMap[string, *jsonschema.Schema]
 		if defName == rootName {

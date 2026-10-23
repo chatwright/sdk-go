@@ -42,3 +42,4 @@ jobs:
       # a disallowed major bump is capped to a minor bump with a warning,
       # never a failed run.
       allow_major_version_bump: false
+      min_test_coverage_percent: 100

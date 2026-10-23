@@ -22,24 +22,32 @@ import (
 // reads the committed file from.
 const outputPath = "formats/run-bundle/v1/schema.json"
 
+var (
+	osExit            = os.Exit
+	schemagenGenerate = schemagen.Generate
+	schemagenMarshal  = schemagen.Marshal
+	findRepoRoot      = repoRoot
+	getwd             = os.Getwd
+)
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		osExit(1)
 	}
 }
 
 func run() error {
-	schema, err := schemagen.Generate()
+	schema, err := schemagenGenerate()
 	if err != nil {
 		return err
 	}
-	data, err := schemagen.Marshal(schema)
+	data, err := schemagenMarshal(schema)
 	if err != nil {
 		return err
 	}
 
-	root, err := repoRoot()
+	root, err := findRepoRoot()
 	if err != nil {
 		return err
 	}
@@ -61,7 +69,7 @@ func run() error {
 // `go run ./internal/schemagen/gen` from any subdirectory also needs to
 // resolve the same outputPath, so this cannot simply assume the cwd.
 func repoRoot() (string, error) {
-	dir, err := os.Getwd()
+	dir, err := getwd()
 	if err != nil {
 		return "", fmt.Errorf("gen: getwd: %w", err)
 	}
